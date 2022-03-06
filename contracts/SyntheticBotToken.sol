@@ -86,6 +86,28 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
+     * @dev Returns the total amount of rewards remaining for the given position.
+     * @param _positionID ID of the position NFT.
+     * @return (uint256) Total amount of rewards remaining.
+     */
+    function remainingRewards(uint256 _positionID) public view override returns (uint256) {
+        return (positions[_positionID].rewardsEndOn.sub(lastTimeRewardApplicable(_positionID))).mul(positions[_positionID].rewardRate);
+    }
+
+    /**
+     * @dev Returns the user's amount of rewards remaining for the given position.
+     * @param _user Address of the user.
+     * @param _positionID ID of the position NFT.
+     * @return (uint256) User's amount of rewards remaining.
+     */
+    function remainingRewardsForUser(address _user, uint256 _positionID) external view override returns (uint256) {
+        require(_user != address(0), "SyntheticBotToken: invalid address for user.");
+        require(_positionID >= 0, "SyntheticBotToken: position ID must be positive.");
+
+        return remainingRewards(_positionID).mul(balanceOf(_user, _positionID)).div(positions[_positionID].numberOfTokens);
+    }
+
+    /**
      * @dev Returns the number of rewards available per token for the given position.
      * @param _positionID ID of the position NFT.
      * @return (uint256) Number of rewards per token.

@@ -19,6 +19,21 @@ interface ISyntheticBotToken {
      */
     function lastTimeRewardApplicable(uint256 _positionID) external view returns (uint256);
 
+     /**
+     * @dev Returns the total amount of rewards remaining for the given position.
+     * @param _positionID ID of the position NFT.
+     * @return (uint256) Total amount of rewards remaining.
+     */
+    function remainingRewards(uint256 _positionID) external view returns (uint256);
+
+    /**
+     * @dev Returns the user's amount of rewards remaining for the given position.
+     * @param _user Address of the user.
+     * @param _positionID ID of the position NFT.
+     * @return (uint256) User's amount of rewards remaining.
+     */
+    function remainingRewardsForUser(address _user, uint256 _positionID) external view returns (uint256);
+
     /**
      * @dev Returns the number of rewards available per token for the given position.
      * @param _positionID ID of the position NFT.
