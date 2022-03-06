@@ -33,9 +33,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     uint256 public constant REWARDS_DURATION = 365 days;
 
-    IRouter public immutable router;
     IBotPerformanceOracle public immutable oracle;
-    IERC20 public immutable collateralToken; // CELO
+    IERC20 public immutable collateralToken; // cUSD
     ITradingBot public immutable tradingBot;
 
     // Keep track of highest NFT ID.
@@ -52,13 +51,11 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _router, address _botPerformanceOracle, address _tradingBot, address _collateralToken) {
-        require(_router != address(0), "SyntheticBotToken: invalid address for router.");
+    constructor(address _botPerformanceOracle, address _tradingBot, address _collateralToken) {
         require(_botPerformanceOracle != address(0), "SyntheticBotToken: invalid address for bot performance oracle.");
         require(_tradingBot != address(0), "SyntheticBotToken: invalid address for trading bot.");
         require(_collateralToken != address(0), "SyntheticBotToken: invalid address for collateral token.");
 
-        router = IRouter(_router);
         oracle = IBotPerformanceOracle(_botPerformanceOracle);
         tradingBot = ITradingBot(_tradingBot);
         collateralToken = IERC20(_collateralToken);
@@ -119,18 +116,17 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
    /**
      * @dev Mints synthetic bot tokens.
-     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of CELO before calling this function.
+     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of cUSD before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
      */
     function mintTokens(uint256 _numberOfTokens) external override nonReentrant {
         require(_numberOfTokens > 0, "SyntheticBotToken: number of tokens must be positive.");
 
         uint256 botTokenPrice = oracle.getTokenPrice();
-        uint256 CELOPrice = router.getUSDPrice(address(collateralToken));
-        uint256 amountOfCELO = _numberOfTokens.mul(botTokenPrice).div(CELOPrice);
+        uint256 amountOfUSD = _numberOfTokens.mul(botTokenPrice).div(1e18);
 
-        collateralToken.safeTransferFrom(msg.sender, address(this), amountOfCELO.mul(tradingBot.tokenMintFee().add(10000)).div(10000));
-        collateralToken.safeTransfer(tradingBot.owner(), amountOfCELO.mul(tradingBot.tokenMintFee()).div(10000));
+        collateralToken.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(tradingBot.tokenMintFee().add(10000)).div(10000));
+        collateralToken.safeTransfer(tradingBot.owner(), amountOfUSD.mul(tradingBot.tokenMintFee()).div(10000));
 
         numberOfPositions = numberOfPositions.add(1);
         _mint(msg.sender, numberOfPositions, _numberOfTokens, "");
@@ -140,7 +136,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
             rewardsEndOn: block.timestamp.add(REWARDS_DURATION),
             lastUpdateTime: block.timestamp,
             rewardPerTokenStored: 0,
-            rewardRate: amountOfCELO.div(REWARDS_DURATION)
+            rewardRate: amountOfUSD.div(REWARDS_DURATION)
         });
 
         emit MintedTokens(msg.sender, numberOfPositions, _numberOfTokens);
