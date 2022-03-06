@@ -13,6 +13,7 @@ import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
 import './interfaces/ITradingBot.sol';
 import './interfaces/ISyntheticBotToken.sol';
 import './interfaces/IRouter.sol';
+import "./interfaces/IFeePool.sol";
 
 // Inheritance
 import './interfaces/IMarketplace.sol';
@@ -24,6 +25,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     IERC20 public immutable mcUSD;
     IRouter public immutable router;
     IERC20 public immutable TGEN;
+    IFeePool public immutable feePool;
     address public immutable xTGEN;
 
     // Starts at index 1; increases without bounds.
@@ -36,15 +38,17 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     // Returns 0 if user is not selling the NFT ID.
     mapping (address => mapping (uint256 => uint256)) public userToID; 
 
-    constructor(address _mcUSD, address _router, address _TGEN, address _xTGEN) Ownable() {
+    constructor(address _mcUSD, address _router, address _TGEN, address _feePool, address _xTGEN) Ownable() {
         require(_mcUSD != address(0), "Marketplace: invalid address for mcUSD.");
         require(_router != address(0), "Marketplace: invalid address for router.");
         require(_TGEN != address(0), "Marketplace: invalid address for TGEN.");
+        require(_feePool != address(0), "Marketplace: invalid address for fee pool.");
         require(_xTGEN != address(0), "Marketplace: invalid address for xTGEN.");
 
         mcUSD = IERC20(_mcUSD);
         router = IRouter(_router);
         TGEN = IERC20(_TGEN);
+        feePool = IFeePool(_feePool);
         xTGEN = _xTGEN;
     }
 
@@ -84,6 +88,8 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
 
         // Transfer mcUSD to bot owner.
         mcUSD.safeTransfer(botOwner, amountOfUSD.mul(transactionFee).div(10000));
+        mcUSD.approve(address(feePool), amountOfUSD.mul(transactionFee).div(10000));
+        feePool.deposit(botOwner, amountOfUSD.mul(transactionFee).div(10000));
         
         // Transfer mcUSD to seller.
         mcUSD.safeTransfer(listing.seller, amountOfUSD);

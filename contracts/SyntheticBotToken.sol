@@ -11,6 +11,7 @@ import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 // Interfaces
 import "./interfaces/ITradingBot.sol";
 import "./interfaces/IBotPerformanceOracle.sol";
+import "./interfaces/IFeePool.sol";
 
 // Inheritance
 import "./interfaces/ISyntheticBotToken.sol";
@@ -35,6 +36,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     IBotPerformanceOracle public immutable oracle;
     IERC20 public immutable collateralToken; // mcUSD
     ITradingBot public immutable tradingBot;
+    IFeePool public immutable feePool;
 
     // Keep track of highest NFT ID.
     uint256 numberOfPositions;
@@ -50,14 +52,16 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _botPerformanceOracle, address _tradingBot, address _collateralToken) {
+    constructor(address _botPerformanceOracle, address _tradingBot, address _collateralToken, address _feePool) {
         require(_botPerformanceOracle != address(0), "SyntheticBotToken: invalid address for bot performance oracle.");
         require(_tradingBot != address(0), "SyntheticBotToken: invalid address for trading bot.");
         require(_collateralToken != address(0), "SyntheticBotToken: invalid address for collateral token.");
+        require(_feePool != address(0), "SyntheticBotToken: invalid address for fee pool.");
 
         oracle = IBotPerformanceOracle(_botPerformanceOracle);
         tradingBot = ITradingBot(_tradingBot);
         collateralToken = IERC20(_collateralToken);
+        feePool = IFeePool(_feePool);
     }
 
     /* ========== VIEWS ========== */
@@ -161,7 +165,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
         uint256 amountOfUSD = _numberOfTokens.mul(botTokenPrice).div(1e18);
 
         collateralToken.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(tradingBot.tokenMintFee().add(10000)).div(10000));
-        collateralToken.safeTransfer(tradingBot.owner(), amountOfUSD.mul(tradingBot.tokenMintFee()).div(10000));
+        collateralToken.approve(address(feePool), amountOfUSD.mul(tradingBot.tokenMintFee()).div(10000));
+        feePool.deposit(tradingBot.owner(), amountOfUSD.mul(tradingBot.tokenMintFee()).div(10000));
 
         numberOfPositions = numberOfPositions.add(1);
         _mint(msg.sender, numberOfPositions, _numberOfTokens, "");
