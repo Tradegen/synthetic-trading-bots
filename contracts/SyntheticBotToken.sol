@@ -10,6 +10,7 @@ import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
 // Interfaces
 import "./interfaces/IRouter.sol";
+import "./interfaces/ITradingBot.sol";
 import "./interfaces/IBotPerformanceOracle.sol";
 
 // Inheritance
@@ -35,7 +36,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     IRouter public immutable router;
     IBotPerformanceOracle public immutable oracle;
     IERC20 public immutable collateralToken; // CELO
-    address public immutable tradingBot;
+    ITradingBot public immutable tradingBot;
 
     // Keep track of highest NFT ID.
     uint256 numberOfPositions;
@@ -59,7 +60,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
         router = IRouter(_router);
         oracle = IBotPerformanceOracle(_botPerformanceOracle);
-        tradingBot = _tradingBot;
+        tradingBot = ITradingBot(_tradingBot);
         collateralToken = IERC20(_collateralToken);
     }
 
@@ -118,7 +119,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
    /**
      * @dev Mints synthetic bot tokens.
-     * @notice Need to approve (botTokenPrice * numberOfTokens) worth of CELO before calling this function.
+     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of CELO before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
      */
     function mintTokens(uint256 _numberOfTokens) external override nonReentrant {
@@ -128,7 +129,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
         uint256 CELOPrice = router.getUSDPrice(address(collateralToken));
         uint256 amountOfCELO = _numberOfTokens.mul(botTokenPrice).div(CELOPrice);
 
-        collateralToken.safeTransferFrom(msg.sender, address(this), amountOfCELO);
+        collateralToken.safeTransferFrom(msg.sender, address(this), amountOfCELO.mul(tradingBot.tokenMintFee().add(10000)).div(10000));
+        collateralToken.safeTransfer(tradingBot.owner(), amountOfCELO.mul(tradingBot.tokenMintFee()).div(10000));
 
         numberOfPositions = numberOfPositions.add(1);
         _mint(msg.sender, numberOfPositions, _numberOfTokens, "");

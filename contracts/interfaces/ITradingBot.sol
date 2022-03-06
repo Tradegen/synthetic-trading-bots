@@ -14,4 +14,9 @@ interface ITradingBot {
      * @dev Returns the fee (denominated in 10000) for trading the bot's token.
      */
     function tokenTradeFee() external view returns (uint256);
+
+    /**
+     * @dev Returns the address of the trading bot's owner.
+     */
+    function owner() external view returns (address);
 }
