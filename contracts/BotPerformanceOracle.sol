@@ -6,7 +6,7 @@ pragma solidity ^0.8.3;
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 
 // Interfaces
-import "./interfaces/IRouter.sol";
+import "./interfaces/IPriceAggregatorRouter.sol";
 
 // Inheritance
 import "./interfaces/IBotPerformanceOracle.sol";
@@ -24,7 +24,7 @@ contract BotPerformanceOracle is IBotPerformanceOracle {
 
     /* ========== STATE VARIABLES ========== */
 
-    IRouter public immutable router;
+    IPriceAggregatorRouter public immutable router;
     address public immutable tradingBot;
 
     uint256 numberOfOrders;
@@ -36,7 +36,7 @@ contract BotPerformanceOracle is IBotPerformanceOracle {
         require(_router != address(0), "BotPerformanceOracle: invalid address for router.");
         require(_tradingBot != address(0), "BotPerformanceOracle: invalid address for trading bot.");
 
-        router = IRouter(_router);
+        router = IPriceAggregatorRouter(_router);
         tradingBot = _tradingBot;
     }
 

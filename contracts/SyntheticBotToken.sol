@@ -9,7 +9,6 @@ import "./openzeppelin-solidity/contracts/ERC1155/ERC1155.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
 // Interfaces
-import "./interfaces/IRouter.sol";
 import "./interfaces/ITradingBot.sol";
 import "./interfaces/IBotPerformanceOracle.sol";
 
@@ -34,7 +33,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     uint256 public constant REWARDS_DURATION = 365 days;
 
     IBotPerformanceOracle public immutable oracle;
-    IERC20 public immutable collateralToken; // cUSD
+    IERC20 public immutable collateralToken; // mcUSD
     ITradingBot public immutable tradingBot;
 
     // Keep track of highest NFT ID.
@@ -62,6 +61,20 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /* ========== VIEWS ========== */
+
+    /**
+     * @dev Returns the USD price of the synthetic bot token.
+     */
+    function getTokenPrice() external view returns (uint256) {
+        return oracle.getTokenPrice();
+    }
+
+    /**
+     * @dev Returns the address of the trading bot associated with this token.
+     */
+    function getTradingBot() external view override returns (address) {
+        return address(tradingBot);
+    }
 
     /**
      * @dev Given a position ID, returns the position info.
@@ -138,7 +151,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
    /**
      * @dev Mints synthetic bot tokens.
-     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of cUSD before calling this function.
+     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of mcUSD before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
      */
     function mintTokens(uint256 _numberOfTokens) external override nonReentrant {

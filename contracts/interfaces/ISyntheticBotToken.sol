@@ -6,6 +6,16 @@ interface ISyntheticBotToken {
     // Views
 
     /**
+     * @dev Returns the USD price of the synthetic bot token.
+     */
+    function getTokenPrice() external view returns (uint256);
+
+    /**
+     * @dev Returns the address of the trading bot associated with this token.
+     */
+    function getTradingBot() external view returns (address);
+
+    /**
      * @dev Given a position ID, returns the position info.
      * @param _positionID ID of the position NFT.
      * @return (uint256, uint256, uint256, uint256, uint256, uint256) total number of tokens in the position, timestamp the position was created, timestamp the rewards will end, timestamp the rewards were last updated, number of rewards per token, number of rewards per second.
