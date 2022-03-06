@@ -22,9 +22,10 @@ interface IBotPerformanceOracle {
 
     /**
      * @dev Adds the order to the ledger and updates the trading bot's token price.
+     * @notice This function is meant to be called by the Trading Bot contract when the bot's keeper
+     *          updates entry/exit rules with the latest asset price.
      * @param _asset Address of the asset.
      * @param _isBuy Whether the order is a 'buy' order
-     * @param _assetPrice Price of the asset when the order was executed.
      */
-    function onOrderPlaced(address _asset, bool _isBuy, uint256 _assetPrice) external;
+    function onOrderPlaced(address _asset, bool _isBuy) external;
 }
