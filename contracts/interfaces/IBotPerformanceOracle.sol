@@ -26,6 +26,7 @@ interface IBotPerformanceOracle {
      *          updates entry/exit rules with the latest asset price.
      * @param _asset Address of the asset.
      * @param _isBuy Whether the order is a 'buy' order
+     * @param _price Price at which the order executed.
      */
-    function onOrderPlaced(address _asset, bool _isBuy) external;
+    function onOrderPlaced(address _asset, bool _isBuy, uint256 _price) external;
 }

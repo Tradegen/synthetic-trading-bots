@@ -77,18 +77,19 @@ contract BotPerformanceOracle is IBotPerformanceOracle {
      *          updates entry/exit rules with the latest asset price.
      * @param _asset Address of the asset.
      * @param _isBuy Whether the order is a 'buy' order
+     * @param _price Price at which the order executed.
      */
-    function onOrderPlaced(address _asset, bool _isBuy) external override onlyTradingBot {
+    function onOrderPlaced(address _asset, bool _isBuy, uint256 _price) external override onlyTradingBot {
         orders[numberOfOrders.add(1)] = Order({
             asset: _asset,
             isBuy: _isBuy,
             timestamp: block.timestamp,
-            assetPrice: router.getUSDPrice(_asset),
+            assetPrice: _price,
             newBotTokenPrice: getTokenPrice()
         });
         numberOfOrders = numberOfOrders.add(1);
 
-        emit OrderPlaced(_asset, _isBuy, orders[numberOfOrders].assetPrice, orders[numberOfOrders].newBotTokenPrice);
+        emit OrderPlaced(_asset, _isBuy, _price, orders[numberOfOrders].newBotTokenPrice);
     }
 
     /* ========== MODIFIERS ========== */
