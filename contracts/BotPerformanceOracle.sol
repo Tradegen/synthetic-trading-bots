@@ -7,6 +7,7 @@ import "./openzeppelin-solidity/contracts/SafeMath.sol";
 
 // Interfaces
 import "./interfaces/IPriceAggregatorRouter.sol";
+import "./interfaces/IPriceAggregator.sol";
 
 // Inheritance
 import "./interfaces/IBotPerformanceOracle.sol";
@@ -66,7 +67,7 @@ contract BotPerformanceOracle is IBotPerformanceOracle {
 
         Order memory latestOrder = orders[numberOfOrders];
 
-        return latestOrder.isBuy ? latestOrder.newBotTokenPrice : router.getUSDPrice(latestOrder.asset).mul(latestOrder.newBotTokenPrice).div(latestOrder.assetPrice);
+        return latestOrder.isBuy ? latestOrder.newBotTokenPrice : IPriceAggregator(router.getPriceAggregator(latestOrder.asset)).latestRawPrice().mul(latestOrder.newBotTokenPrice).div(latestOrder.assetPrice);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
