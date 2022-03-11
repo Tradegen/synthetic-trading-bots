@@ -68,7 +68,7 @@ contract BotPerformanceOracle is IBotPerformanceOracle, Ownable {
 
         Order memory latestOrder = orders[numberOfOrders];
 
-        return latestOrder.isBuy ? latestOrder.newBotTokenPrice : IPriceAggregator(router.getPriceAggregator(latestOrder.asset)).latestRawPrice().mul(latestOrder.newBotTokenPrice).div(latestOrder.assetPrice);
+        return latestOrder.isBuy ? IPriceAggregator(router.getPriceAggregator(latestOrder.asset)).latestRawPrice().mul(latestOrder.newBotTokenPrice).div(latestOrder.assetPrice) : latestOrder.newBotTokenPrice;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -96,7 +96,7 @@ contract BotPerformanceOracle is IBotPerformanceOracle, Ownable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function setOracle(address _newOracle) external {
+    function setOracle(address _newOracle) external onlyOwner {
         require(_newOracle != address(0), "BotPerformanceOracle: invalid address for new oracle.");
 
         oracle = _newOracle;
