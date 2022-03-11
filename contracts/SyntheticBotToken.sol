@@ -69,7 +69,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     /**
      * @dev Returns the USD price of the synthetic bot token.
      */
-    function getTokenPrice() external view returns (uint256) {
+    function getTokenPrice() external view override returns (uint256) {
         return oracle.getTokenPrice();
     }
 

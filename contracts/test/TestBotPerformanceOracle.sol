@@ -18,4 +18,8 @@ contract TestBotPerformanceOracle is BotPerformanceOracle {
             newBotTokenPrice: _newBotTokenPrice
         });
     }
+
+    function setNumberOfOrders(uint256 _numberOfOrders) external {
+        numberOfOrders = _numberOfOrders;
+    }
 }

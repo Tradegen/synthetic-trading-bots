@@ -160,7 +160,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         MarketplaceListing memory listing = marketplaceListings[_index];
 
         if (_newQuantity >= listing.numberOfTokens) {
-]            IERC1155(listing.botTokenAddress).safeTransferFrom(msg.sender, address(this), listing.positionID, _newQuantity.sub(listing.numberOfTokens), "");
+            IERC1155(listing.botTokenAddress).safeTransferFrom(msg.sender, address(this), listing.positionID, _newQuantity.sub(listing.numberOfTokens), "");
         }
         else {
             _removeTokensFromListing(listing.botTokenAddress, listing.positionID, msg.sender, _index, listing.numberOfTokens.sub(_newQuantity));

@@ -20,7 +20,7 @@ contract PriceAggregatorRouter is IPriceAggregatorRouter, Ownable {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _oracle, address _asset) Ownable() {}
+    constructor() Ownable() {}
 
     /* ========== VIEWS ========== */
 
