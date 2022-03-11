@@ -19,4 +19,8 @@ contract TestSyntheticBotToken is SyntheticBotToken {
             rewardRate: _rewardRate
         });
     }
+
+    function getCurrentTime() external view returns (uint256) {
+        return block.timestamp;
+    }
 }

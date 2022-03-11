@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("FeePool", () => {
   let deployer;
   let otherUser;
@@ -96,4 +96,4 @@ describe("FeePool", () => {
         expect(newBalance).to.equal(initialBalance);
     });
   });
-});
+});*/
