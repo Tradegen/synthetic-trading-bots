@@ -10,8 +10,10 @@ contract TestTradingBot is ITradingBot {
     uint256 public override tokenTradeFee;
     address public override owner;
 
-    constructor() {
+    constructor(uint256 _mintFee, uint256 _tradeFee) {
         owner = msg.sender;
+        tokenMintFee = _mintFee;
+        tokenTradeFee = _tradeFee;
     }
 
     function setTokenMintFee(uint256 _newMintFee) external {

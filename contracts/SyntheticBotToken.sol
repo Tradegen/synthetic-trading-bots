@@ -39,7 +39,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     IFeePool public immutable feePool;
 
     // Keep track of highest NFT ID.
-    uint256 numberOfPositions;
+    uint256 public numberOfPositions;
 
     // NFT ID => position info.
     mapping(uint256 => Position) public positions;
@@ -121,11 +121,12 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
         require(_user != address(0), "SyntheticBotToken: invalid address for user.");
         require(_positionID >= 0, "SyntheticBotToken: position ID must be positive.");
 
-        return remainingRewards(_positionID).mul(balanceOf(_user, _positionID)).div(positions[_positionID].numberOfTokens);
+        return (positions[_positionID].numberOfTokens == 0) ? 0 : remainingRewards(_positionID).mul(balanceOf(_user, _positionID)).div(positions[_positionID].numberOfTokens);
     }
 
     /**
      * @dev Returns the number of rewards available per token for the given position.
+     * @notice Scaled by 1e18 to avoid flooring when calculating earned().
      * @param _positionID ID of the position NFT.
      * @return (uint256) Number of rewards per token.
      */
@@ -145,7 +146,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
      * @dev Returns the amount of rewards the user has earned for the given position.
      * @param _account Address of the user.
      * @param _positionID ID of the position NFT.
-     * @return (uint256) Amount of rewards earned
+     * @return (uint256) Amount of rewards earned.
      */
     function earned(address _account, uint256 _positionID) public view override returns (uint256) {
         return balanceOf(_account, _positionID).mul(rewardPerToken(_positionID).sub(userRewardPerTokenPaid[_account][_positionID])).div(1e18).add(rewards[_account][_positionID]);
@@ -161,12 +162,13 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     function mintTokens(uint256 _numberOfTokens) external override nonReentrant {
         require(_numberOfTokens > 0, "SyntheticBotToken: number of tokens must be positive.");
 
+        uint256 mintFee = tradingBot.tokenMintFee();
         uint256 botTokenPrice = oracle.getTokenPrice();
         uint256 amountOfUSD = _numberOfTokens.mul(botTokenPrice).div(1e18);
 
-        collateralToken.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(tradingBot.tokenMintFee().add(10000)).div(10000));
-        collateralToken.approve(address(feePool), amountOfUSD.mul(tradingBot.tokenMintFee()).div(10000));
-        feePool.deposit(tradingBot.owner(), amountOfUSD.mul(tradingBot.tokenMintFee()).div(10000));
+        collateralToken.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(mintFee.add(10000)).div(10000));
+        collateralToken.approve(address(feePool), amountOfUSD.mul(mintFee).div(10000));
+        feePool.deposit(tradingBot.owner(), amountOfUSD.mul(mintFee).div(10000));
 
         numberOfPositions = numberOfPositions.add(1);
         _mint(msg.sender, numberOfPositions, _numberOfTokens, "");

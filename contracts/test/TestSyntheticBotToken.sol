@@ -23,4 +23,20 @@ contract TestSyntheticBotToken is SyntheticBotToken {
     function getCurrentTime() external view returns (uint256) {
         return block.timestamp;
     }
+
+    function testMint(address _user, uint256 _tokenID, uint256 _balance) external {
+        _mint(_user, _tokenID, _balance, "");
+    }
+
+    function setNumberOfTokens(uint256 _positionID, uint256 _numberOfTokens) external {
+        positions[_positionID].numberOfTokens = _numberOfTokens;
+    }
+
+    function setLastUpdateTime(uint256 _positionID, uint256 _lastUpdateTime) external {
+        positions[_positionID].lastUpdateTime = _lastUpdateTime;
+    }
+
+    function setRewardsEndOn(uint256 _positionID, uint256 _rewardsEndOn) external {
+        positions[_positionID].rewardsEndOn = _rewardsEndOn;
+    }
 }
