@@ -38,13 +38,17 @@ contract ExternalContractFactory is IExternalContractFactory {
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
-/**
+
+    /**
     * @dev Creates SyntheticBotToken and BotPerformanceOracle contracts.
     * @notice This function is meant to be called by TradingBots contract when creating a trading bot.
+    * @param _oracle Address of the dedicated oracle for the trading bot's synthetic token.
     * @return (address, address) The address of the BotPerformanceOracle contract, and the address of the SyntheticBotTokenn address.
     */
-    function createContracts() external override returns (address, address) {
-        address botPerformanceOracle = address(new BotPerformanceOracle(router, msg.sender));
+    function createContracts(address _oracle) external override returns (address, address) {
+        require(_oracle != address(0), "ExternalContractFactory: invalid address for oracle.");
+
+        address botPerformanceOracle = address(new BotPerformanceOracle(router, _oracle));
         address syntheticBotToken = address(new SyntheticBotToken(botPerformanceOracle, msg.sender, mcUSD, feePool));
 
         emit CreatedContracts(msg.sender, botPerformanceOracle, syntheticBotToken);

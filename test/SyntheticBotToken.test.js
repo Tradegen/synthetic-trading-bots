@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("SyntheticBotToken", () => {
   let deployer;
   let otherUser;
@@ -74,7 +74,7 @@ describe("SyntheticBotToken", () => {
     await syntheticBotToken.deployed();
     syntheticBotTokenAddress = syntheticBotToken.address;
   });
-  /*
+  
   describe("#remainingRewards", () => {
     it("0 time elapsed", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
@@ -499,7 +499,7 @@ describe("SyntheticBotToken", () => {
         expect(positionInfo[4]).to.equal(1601344495176);
         expect(positionInfo[5]).to.equal(317097919837);
     });
-  });*/
+  });
 
   describe("#safeTransferFrom", () => {
     it("no rewards available for recipient", async () => {
@@ -684,4 +684,4 @@ describe("SyntheticBotToken", () => {
         expect(positionInfo[5]).to.equal(317097919837);
     });
   });
-});
+});*/
