@@ -1,6 +1,7 @@
 const { expect } = require("chai");
-/*
-describe("ExternalContractFactory", () => {
+const { parseEther } = require("@ethersproject/units");
+
+describe("Marketplace", () => {
   let deployer;
   let otherUser;
   
@@ -17,14 +18,16 @@ describe("ExternalContractFactory", () => {
   let PriceAggregatorRouterFactory;
 
   let botPerformanceOracle;
+  let botPerformanceOracleAddress;
   let BotPerformanceOracleFactory;
 
   let syntheticBotToken;
+  let syntheticBotTokenAddress;
   let SyntheticBotTokenFactory;
 
-  let externalContractFactory;
-  let externalContractFactoryAddress;
-  let ExternalContractFactoryFactory;
+  let marketplace;
+  let marketplaceAddress;
+  let MarketplaceFactory;
   
   before(async () => {
     const signers = await ethers.getSigners();
@@ -36,7 +39,7 @@ describe("ExternalContractFactory", () => {
     PriceAggregatorRouterFactory = await ethers.getContractFactory('PriceAggregatorRouter');
     BotPerformanceOracleFactory = await ethers.getContractFactory('BotPerformanceOracle');
     SyntheticBotTokenFactory = await ethers.getContractFactory('SyntheticBotToken');
-    ExternalContractFactoryFactory = await ethers.getContractFactory('ExternalContractFactory');
+    MarketplaceFactory = await ethers.getContractFactory('Marketplace');
 
     testToken = await TestTokenFactory.deploy("Test token", "TEST");
     await testToken.deployed();
@@ -49,6 +52,14 @@ describe("ExternalContractFactory", () => {
     priceAggregatorRouter = await PriceAggregatorRouterFactory.deploy();
     await priceAggregatorRouter.deployed();
     priceAggregatorRouterAddress = priceAggregatorRouter.address;
+
+    botPerformanceOracle = await BotPerformanceOracleFactory.deploy(priceAggregatorRouterAddress, otherUser.address);
+    await botPerformanceOracle.deployed();
+    botPerformanceOracleAddress = botPerformanceOracle.address;
+
+    syntheticBotToken = await SyntheticBotTokenFactory.deploy(botPerformanceOracleAddress, deployer.address, testTokenAddress, feePoolAddress);
+    await syntheticBotToken.deployed();
+    syntheticBotTokenAddress = syntheticBotToken.address;
   });
 
   beforeEach(async () => {
@@ -90,4 +101,4 @@ describe("ExternalContractFactory", () => {
         expect(fee).to.equal(feePoolAddress);
     });
   });
-});*/
+});
