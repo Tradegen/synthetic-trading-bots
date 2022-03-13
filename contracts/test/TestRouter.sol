@@ -38,14 +38,14 @@ contract TestRouter is IRouter {
     /**
     * @dev Placeholder for testing.
     */
-    function swapTGENForAsset(address _asset, uint256 _amount) external override returns (uint256) {
+    function swapTGENForAsset(address, uint256) external override returns (uint256) {
         return 0;
     }
 
     /**
     * @dev Placeholder for testing.
     */
-    function addLiquidity(address _asset, uint256 _amountAsset, uint256 _amountTGEN) external override {
+    function addLiquidity(address, uint256, uint256) external override {
         return;
     }
 

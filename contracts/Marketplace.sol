@@ -34,9 +34,9 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     // Starts at index 1; increases without bounds.
     mapping (uint256 => MarketplaceListing) public marketplaceListings; 
 
-    // User address => NFT ID => listing index.
+    // User address => bot token address => NFT ID => listing index.
     // Returns 0 if user is not selling the NFT ID.
-    mapping (address => mapping (uint256 => uint256)) public userToID; 
+    mapping (address => mapping (address => mapping (uint256 => uint256))) public userToID; 
 
     constructor(address _mcUSD, address _router, address _TGEN, address _feePool, address _xTGEN) Ownable() {
         require(_mcUSD != address(0), "Marketplace: invalid address for mcUSD.");
@@ -109,14 +109,14 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     */
     function createListing(address _botToken, uint256 _ID, uint256 _price, uint256 _numberOfTokens) external override {
         require(_botToken != address(0), "Marketplace: invalid adderss for synthetic bot token.");
-        require(userToID[msg.sender][_ID] == 0, "Marketplace: Already have a marketplace listing for this NFT.");
+        require(userToID[msg.sender][_botToken][_ID] == 0, "Marketplace: Already have a marketplace listing for this NFT.");
         require(_price > 0, "Marketplace: Price must be greater than 0");
         require(_numberOfTokens > 0, "Marketplace: Number of tokens must be greater than 0");
         require(IERC1155(_botToken).balanceOf(msg.sender, _ID) >= _numberOfTokens, "Marketplace: Not enough tokens.");
         require(_price >= ISyntheticBotToken(_botToken).getTokenPrice(), "Marketplace: Price must be above oracle price.");
 
         numberOfMarketplaceListings = numberOfMarketplaceListings.add(1);
-        userToID[msg.sender][_ID] = numberOfMarketplaceListings;
+        userToID[msg.sender][_botToken][_ID] = numberOfMarketplaceListings;
         marketplaceListings[numberOfMarketplaceListings] = MarketplaceListing(msg.sender, true, _botToken, _ID, _numberOfTokens, _price);
 
         // Transfer NFT to marketplace.
@@ -192,7 +192,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
 
         if (marketplaceListings[_index].numberOfTokens == 0) {
             marketplaceListings[_index].exists = false;
-            userToID[_user][marketplaceListings[_index].positionID] = 0;
+            userToID[_user][_botToken][marketplaceListings[_index].positionID] = 0;
         }
 
         uint256 initialBalance = mcUSD.balanceOf(address(this));
