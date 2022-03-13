@@ -112,7 +112,8 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         require(userToID[msg.sender][_ID] == 0, "Marketplace: Already have a marketplace listing for this NFT.");
         require(_price > 0, "Marketplace: Price must be greater than 0");
         require(_numberOfTokens > 0, "Marketplace: Number of tokens must be greater than 0");
-        require(IERC1155(_botToken).balanceOf(msg.sender, _ID) >= _numberOfTokens, "Marketplace: not enough tokens.");
+        require(IERC1155(_botToken).balanceOf(msg.sender, _ID) >= _numberOfTokens, "Marketplace: Not enough tokens.");
+        require(_price >= ISyntheticBotToken(_botToken).getTokenPrice(), "Marketplace: Price must be above oracle price.");
 
         numberOfMarketplaceListings = numberOfMarketplaceListings.add(1);
         userToID[msg.sender][_ID] = numberOfMarketplaceListings;
@@ -143,6 +144,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     */
     function updatePrice(uint256 _index, uint256 _newPrice) external override indexInRange(_index) onlySeller(_index) {
         require(_newPrice > 0, "Marketplace: New price must be greater than 0");
+        require(_newPrice >= ISyntheticBotToken(marketplaceListings[_index].botTokenAddress).getTokenPrice(), "Marketplace: Price must be above oracle price.");
 
         marketplaceListings[_index].price = _newPrice;
 
