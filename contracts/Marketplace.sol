@@ -29,7 +29,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     address public immutable xTGEN;
 
     // Starts at index 1; increases without bounds.
-    uint256 public numberOfMarketplaceListings = 1;
+    uint256 public numberOfMarketplaceListings;
 
     // Starts at index 1; increases without bounds.
     mapping (uint256 => MarketplaceListing) public marketplaceListings; 

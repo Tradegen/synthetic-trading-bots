@@ -7,11 +7,21 @@ describe("Marketplace", () => {
   
   let testToken;
   let testTokenAddress;
+  let testTGEN;
+  let testTGENAddress;
   let TestTokenFactory;
 
   let feePool;
   let feePoolAddress;
   let FeePoolFactory;
+
+  let tradingBot;
+  let tradingBotAddress;
+  let TradingBotFactory;
+
+  let router;
+  let routerAddress;
+  let RouterFactory;
 
   let priceAggregatorRouter;
   let priceAggregatorRouterAddress;
@@ -36,14 +46,20 @@ describe("Marketplace", () => {
 
     TestTokenFactory = await ethers.getContractFactory('TestTokenERC20');
     FeePoolFactory = await ethers.getContractFactory('FeePool');
-    PriceAggregatorRouterFactory = await ethers.getContractFactory('PriceAggregatorRouter');
+    RouterFactory = await ethers.getContractFactory('TestRouter');
     BotPerformanceOracleFactory = await ethers.getContractFactory('BotPerformanceOracle');
     SyntheticBotTokenFactory = await ethers.getContractFactory('SyntheticBotToken');
+    PriceAggregatorRouterFactory = await ethers.getContractFactory('PriceAggregatorRouter');
+    TradingBotFactory = await ethers.getContractFactory('TestTradingBot');
     MarketplaceFactory = await ethers.getContractFactory('Marketplace');
 
     testToken = await TestTokenFactory.deploy("Test token", "TEST");
     await testToken.deployed();
     testTokenAddress = testToken.address;
+
+    testTGEN = await TestTokenFactory.deploy("Test TGEN", "TGEN");
+    await testTGEN.deployed();
+    testTGENAddress = testTGEN.address;
 
     feePool = await FeePoolFactory.deploy(testTokenAddress);
     await feePool.deployed();
@@ -53,11 +69,19 @@ describe("Marketplace", () => {
     await priceAggregatorRouter.deployed();
     priceAggregatorRouterAddress = priceAggregatorRouter.address;
 
+    tradingBot = await TradingBotFactory.deploy(1000, 1000);
+    await tradingBot.deployed();
+    tradingBotAddress = tradingBot.address;
+
+    router = await RouterFactory.deploy(testTGENAddress);
+    await router.deployed();
+    routerAddress = router.address;
+
     botPerformanceOracle = await BotPerformanceOracleFactory.deploy(priceAggregatorRouterAddress, otherUser.address);
     await botPerformanceOracle.deployed();
     botPerformanceOracleAddress = botPerformanceOracle.address;
 
-    syntheticBotToken = await SyntheticBotTokenFactory.deploy(botPerformanceOracleAddress, deployer.address, testTokenAddress, feePoolAddress);
+    syntheticBotToken = await SyntheticBotTokenFactory.deploy(botPerformanceOracleAddress, tradingBotAddress, testTokenAddress, feePoolAddress);
     await syntheticBotToken.deployed();
     syntheticBotTokenAddress = syntheticBotToken.address;
   });
@@ -67,38 +91,31 @@ describe("Marketplace", () => {
     deployer = signers[0];
     otherUser = signers[1];
 
-    externalContractFactory = await ExternalContractFactoryFactory.deploy(priceAggregatorRouterAddress, testTokenAddress, feePoolAddress);
-    await externalContractFactory.deployed();
-    externalContractFactoryAddress = externalContractFactory.address;
+    // Using BotPerformanceOracle address as xTGEN address for testing.
+    marketplace = await MarketplaceFactory.deploy(testTokenAddress, routerAddress, testTGENAddress, feePoolAddress, botPerformanceOracleAddress);
+    await marketplace.deployed();
+    marketplaceAddress = marketplace.address;
+
+    let tx = await testTGEN.transfer(routerAddress, parseEther("1000"));
+    await tx.wait();
+
+    let tx2 = await testToken.approve(syntheticBotTokenAddress, parseEther("11"));
+    await tx2.wait();
+
+    let tx3 = await syntheticBotToken.mintTokens(parseEther("10"));
+    await tx3.wait();
   });
   
-  describe("#createContracts", () => {
-    it("create contracts", async () => {
-        let tx = await externalContractFactory.createContracts(otherUser.address);
-        let temp = await tx.wait();
-        let botPerformanceOracleAddress = temp.events[1].args.botPerformanceOracle;
-        let syntheticBotTokenAddress = temp.events[1].args.syntheticBotToken;
+  describe("#createListing", () => {
+    it("no balance in position", async () => {
+        let tx = marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
+        await expect(tx).to.be.reverted;
 
-        botPerformanceOracle = BotPerformanceOracleFactory.attach(botPerformanceOracleAddress);
-        syntheticBotToken = SyntheticBotTokenFactory.attach(syntheticBotTokenAddress);
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(0);
 
-        let router = await botPerformanceOracle.router();
-        expect(router).to.equal(priceAggregatorRouterAddress);
-
-        let externalOracle = await botPerformanceOracle.oracle();
-        expect(externalOracle).to.equal(otherUser.address);
-
-        let oracle = await syntheticBotToken.oracle();
-        expect(oracle).to.equal(botPerformanceOracleAddress);
-
-        let tradingBot = await syntheticBotToken.tradingBot();
-        expect(tradingBot).to.equal(deployer.address);
-
-        let collateralToken = await syntheticBotToken.collateralToken();
-        expect(collateralToken).to.equal(testTokenAddress);
-
-        let fee = await syntheticBotToken.feePool();
-        expect(fee).to.equal(feePoolAddress);
+        let index = await marketplace.userToID(deployer.address, 1);
+        expect(index).to.equal(0);
     });
   });
 });

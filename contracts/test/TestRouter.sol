@@ -9,7 +9,7 @@ import "../openzeppelin-solidity/contracts/ERC20/IERC20.sol";
 //Inheritance
 import '../interfaces/IRouter.sol';
 
-contract Router is IRouter {
+contract TestRouter is IRouter {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable TGEN;
