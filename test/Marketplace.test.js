@@ -366,8 +366,8 @@ describe("Marketplace", () => {
         expect(listing[5]).to.equal(parseEther("2"));
     });
   });*/
-
-  describe("#removeListing", () => {/*
+  /*
+  describe("#removeListing", () => {
     it("only seller", async () => {
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
@@ -414,11 +414,11 @@ describe("Marketplace", () => {
         expect(listing[3]).to.equal(1);
         expect(listing[4]).to.equal(0);
         expect(listing[5]).to.equal(parseEther("2"));
-    });*/
+    });
 
     it("rewards accrued for marketplace", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
-        
+
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
 
@@ -457,6 +457,83 @@ describe("Marketplace", () => {
         expect(listing[3]).to.equal(1);
         expect(listing[4]).to.equal(0);
         expect(listing[5]).to.equal(parseEther("2"));
+    });
+  });*/
+
+  describe("#updatePrice", () => {
+    it("only seller", async () => {
+        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
+        await tx2.wait();
+
+        let tx3 = marketplace.connect(otherUser).updatePrice(1, parseEther("3"));
+        await expect(tx3).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
+        expect(index).to.equal(1);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.equal(deployer.address);
+        expect(listing[1]).to.be.true;
+        expect(listing[2]).to.equal(syntheticBotTokenAddress);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(parseEther("1"));
+        expect(listing[5]).to.equal(parseEther("2"));
+    });
+
+    it("below oracle price", async () => {
+        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
+        await tx2.wait();
+
+        let tx3 = marketplace.updatePrice(1, parseEther("0.5"));
+        await expect(tx3).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
+        expect(index).to.equal(1);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.equal(deployer.address);
+        expect(listing[1]).to.be.true;
+        expect(listing[2]).to.equal(syntheticBotTokenAddress);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(parseEther("1"));
+        expect(listing[5]).to.equal(parseEther("2"));
+    });
+
+    it("caller is seller and price is above oracle price", async () => {
+        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
+        await tx2.wait();
+
+        let tx3 = await marketplace.updatePrice(1, parseEther("3"));
+        await tx3.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
+        expect(index).to.equal(1);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.equal(deployer.address);
+        expect(listing[1]).to.be.true;
+        expect(listing[2]).to.equal(syntheticBotTokenAddress);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(parseEther("1"));
+        expect(listing[5]).to.equal(parseEther("3"));
     });
   });
 });
