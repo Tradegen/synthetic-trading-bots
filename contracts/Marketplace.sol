@@ -201,6 +201,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         IERC1155(_botToken).setApprovalForAll(msg.sender, true);
         IERC1155(_botToken).safeTransferFrom(address(this), msg.sender, _positionID, _numberOfTokens, "");
 
+        mcUSD.approve(address(router), mcUSD.balanceOf(address(this)).sub(initialBalance));
         uint256 receivedTGEN = router.swapAssetForTGEN(address(mcUSD), mcUSD.balanceOf(address(this)).sub(initialBalance));
         TGEN.safeTransfer(xTGEN, receivedTGEN);
     }
