@@ -87,7 +87,6 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         mcUSD.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(transactionFee.add(10000)).div(10000));
 
         // Transfer mcUSD to bot owner.
-        mcUSD.safeTransfer(botOwner, amountOfUSD.mul(transactionFee).div(10000));
         mcUSD.approve(address(feePool), amountOfUSD.mul(transactionFee).div(10000));
         feePool.deposit(botOwner, amountOfUSD.mul(transactionFee).div(10000));
         
