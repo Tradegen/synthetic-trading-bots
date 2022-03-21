@@ -21,6 +21,23 @@ interface IMarketplace {
     function getMarketplaceListing(uint256 _index) external view returns (address, bool, address, uint256, uint256, uint256);
 
     /**
+    * @dev Given the index of a marketplace listing, returns the fair value of the listing's token.
+    * @notice Fair value is defined as [oracle price + (remaining rewards / number of tokens in position)].
+    * @param _index Index of the marketplace listing.
+    * @return (uint256) Fair value of the listing's token.
+    */
+    function calculateFairValue(uint256 _index) external view returns (uint256);
+
+    /**
+    * @dev Given the index of a marketplace listing, calculates the difference between the listed price and the token's fair value.
+    * @notice The returned value is scaled by 10000 to represent a percentage with 2 decimal places.
+    * @notice Fair value is defined as [oracle price + (remaining rewards / number of tokens in position)].
+    * @param _index Index of the marketplace listing.
+    * @return (bool, uint256) Whether the price is above fair value, and the % difference between listed price and fair value.
+    */
+    function calculatePriceDifference(uint256 _index) external view returns (bool, uint256);
+
+    /**
     * @dev Purchases tokens in the position at the given index.
     * @param _index Index of the marketplace listing.
     * @param _numberOfTokens Number of tokens to purchase.

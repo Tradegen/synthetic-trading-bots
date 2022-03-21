@@ -70,9 +70,42 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         return (listing.seller, listing.exists, listing.botTokenAddress, listing.positionID, listing.numberOfTokens, listing.price);
     }
 
+    /**
+    * @dev Given the index of a marketplace listing, returns the fair value of the listing's token.
+    * @notice Fair value is defined as [oracle price + (remaining rewards / number of tokens in position)].
+    * @param _index Index of the marketplace listing.
+    * @return (uint256) Fair value of the listing's token.
+    */
+    function calculateFairValue(uint256 _index) public view override indexInRange(_index) returns (uint256) {
+        MarketplaceListing memory listing = marketplaceListings[_index];
+
+        uint256 remainingRewards = ISyntheticBotToken(listing.botTokenAddress).remainingRewards(listing.positionID);
+        (uint256 numberOfTokens,,,,,) = ISyntheticBotToken(listing.botTokenAddress).getPosition(listing.positionID);
+
+        return ISyntheticBotToken(listing.botTokenAddress).getTokenPrice().add(remainingRewards.div(numberOfTokens));
+    }
+
+    /**
+    * @dev Given the index of a marketplace listing, calculates the difference between the listed price and the token's fair value.
+    * @notice The returned value is scaled by 10000 to represent a percentage with 2 decimal places.
+    * @notice Fair value is defined as [oracle price + (remaining rewards / number of tokens in position)].
+    * @param _index Index of the marketplace listing.
+    * @return (bool, uint256) Whether the price is above fair value, and the % difference between listed price and fair value.
+    */
+    function calculatePriceDifference(uint256 _index) external view override indexInRange(_index) returns (bool, uint256) {
+        MarketplaceListing memory listing = marketplaceListings[_index];
+        uint256 fairValue = calculateFairValue(_index);
+
+        if (listing.price >= fairValue) {
+            return (true, (listing.price.sub(fairValue)).mul(10000).mul(1e18).div(fairValue));
+        }
+
+        return (false, (fairValue.sub(listing.price)).mul(10000).mul(1e18).div(fairValue));
+    }
+
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-   /**
+    /**
     * @dev Purchases tokens in the position at the given index.
     * @param _index Index of the marketplace listing.
     * @param _numberOfTokens Number of tokens to purchase.
