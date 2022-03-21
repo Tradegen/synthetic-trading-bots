@@ -107,7 +107,7 @@ describe("Marketplace", () => {
     let tx3 = await syntheticBotToken.mintTokens(parseEther("10"));
     await tx3.wait();
   });
-  /*
+  
   describe("#createListing", () => {
     it("no balance in position", async () => {
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
@@ -123,12 +123,29 @@ describe("Marketplace", () => {
         expect(index).to.equal(0);
     });
 
-    it("below oracle price", async () => {
+    it("below oracle price; no discount", async () => {
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
 
-        let tx2 = marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("0.8"), parseEther("1"));
+        let tx2 = marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("0.95"), parseEther("1"));
         await expect(tx2).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(0);
+
+        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
+        expect(index).to.equal(0);
+    });
+
+    it("below oracle price; discount", async () => {
+        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.setMaximumOraclePriceDiscount(1000);
+        await tx2.wait();
+
+        let tx3 = marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("0.8"), parseEther("1"));
+        await expect(tx3).to.be.reverted;
 
         let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
         expect(numberOfMarketplaceListings).to.equal(0);
@@ -365,8 +382,33 @@ describe("Marketplace", () => {
         expect(listing[4]).to.equal(parseEther("1"));
         expect(listing[5]).to.equal(parseEther("2"));
     });
-  });*/
-  /*
+
+    it("above oracle price; discount", async () => {
+        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.setMaximumOraclePriceDiscount(1000);
+        await tx2.wait();
+
+        let tx3 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("0.95"), parseEther("1"));
+        await tx3.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
+        expect(index).to.equal(1);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.equal(deployer.address);
+        expect(listing[1]).to.be.true;
+        expect(listing[2]).to.equal(syntheticBotTokenAddress);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(parseEther("1"));
+        expect(listing[5]).to.equal(parseEther(".95"));
+    });
+  });
+  
   describe("#removeListing", () => {
     it("only seller", async () => {
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
@@ -486,15 +528,43 @@ describe("Marketplace", () => {
         expect(listing[5]).to.equal(parseEther("2"));
     });
 
-    it("below oracle price", async () => {
+    it("below oracle price; no discount", async () => {
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
 
         let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
         await tx2.wait();
 
-        let tx3 = marketplace.updatePrice(1, parseEther("0.5"));
+        let tx3 = marketplace.updatePrice(1, parseEther("0.95"));
         await expect(tx3).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
+        expect(index).to.equal(1);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.equal(deployer.address);
+        expect(listing[1]).to.be.true;
+        expect(listing[2]).to.equal(syntheticBotTokenAddress);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(parseEther("1"));
+        expect(listing[5]).to.equal(parseEther("2"));
+    });
+
+    it("below oracle price; discount", async () => {
+        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
+        await tx2.wait();
+
+        let tx3 = await marketplace.setMaximumOraclePriceDiscount(1000);
+        await tx3.wait();
+
+        let tx4 = marketplace.updatePrice(1, parseEther("0.8"));
+        await expect(tx4).to.be.reverted;
 
         let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
         expect(numberOfMarketplaceListings).to.equal(1);
@@ -534,6 +604,34 @@ describe("Marketplace", () => {
         expect(listing[3]).to.equal(1);
         expect(listing[4]).to.equal(parseEther("1"));
         expect(listing[5]).to.equal(parseEther("3"));
+    });
+
+    it("above oracle price with discount", async () => {
+        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
+        await tx2.wait();
+
+        let tx3 = await marketplace.setMaximumOraclePriceDiscount(1000);
+        await tx3.wait();
+
+        let tx4 = await marketplace.updatePrice(1, parseEther("0.95"));
+        await tx4.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
+        expect(index).to.equal(1);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.equal(deployer.address);
+        expect(listing[1]).to.be.true;
+        expect(listing[2]).to.equal(syntheticBotTokenAddress);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(parseEther("1"));
+        expect(listing[5]).to.equal(parseEther(".95"));
     });
   });
 
@@ -627,9 +725,9 @@ describe("Marketplace", () => {
         expect(listing[4]).to.equal(parseEther("1"));
         expect(listing[5]).to.equal(parseEther("2"));
     });
-  });*/
+  });
 
-  describe("#purchase", () => {/*
+  describe("#purchase", () => {
     it("own position", async () => {
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
@@ -760,7 +858,7 @@ describe("Marketplace", () => {
         expect(listing[3]).to.equal(1);
         expect(listing[4]).to.equal(parseEther("0"));
         expect(listing[5]).to.equal(parseEther("2"));
-    });*/
+    });
 
     it("partial amount and existing position with rewards", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
@@ -800,7 +898,7 @@ describe("Marketplace", () => {
         expect(availableFees).to.equal(parseEther("1.2"));
 
         let newBalanceStaking = await testTGEN.balanceOf(botPerformanceOracleAddress);
-        let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt(6532217148642);
+        let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt(39098173515893);
         expect(newBalanceStaking.toString()).to.equal(expectedNewBalanceStaking.toString());
 
         let newBalanceFeePool = await testToken.balanceOf(feePoolAddress);

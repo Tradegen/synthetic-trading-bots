@@ -28,6 +28,11 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     IFeePool public immutable feePool;
     address public immutable xTGEN;
 
+    // Maximum discount below oracle price.
+    // Denominated in 10000.
+    // Ex) if value is 100, minimum listing price is 0.99 * oracle price.
+    uint256 public maxOraclePriceDiscount;
+
     // Starts at index 1; increases without bounds.
     uint256 public numberOfMarketplaceListings;
 
@@ -112,7 +117,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         require(_price > 0, "Marketplace: Price must be greater than 0");
         require(_numberOfTokens > 0, "Marketplace: Number of tokens must be greater than 0");
         require(IERC1155(_botToken).balanceOf(msg.sender, _ID) >= _numberOfTokens, "Marketplace: Not enough tokens.");
-        require(_price >= ISyntheticBotToken(_botToken).getTokenPrice(), "Marketplace: Price must be above oracle price.");
+        require(_price >= ISyntheticBotToken(_botToken).getTokenPrice().mul(10000 - maxOraclePriceDiscount).div(10000), "Marketplace: Price must be above oracle price.");
 
         numberOfMarketplaceListings = numberOfMarketplaceListings.add(1);
         userToID[msg.sender][_botToken][_ID] = numberOfMarketplaceListings;
@@ -143,7 +148,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     */
     function updatePrice(uint256 _index, uint256 _newPrice) external override indexInRange(_index) onlySeller(_index) {
         require(_newPrice > 0, "Marketplace: New price must be greater than 0");
-        require(_newPrice >= ISyntheticBotToken(marketplaceListings[_index].botTokenAddress).getTokenPrice(), "Marketplace: Price must be above oracle price.");
+        require(_newPrice >= ISyntheticBotToken(marketplaceListings[_index].botTokenAddress).getTokenPrice().mul(10000 - maxOraclePriceDiscount).div(10000), "Marketplace: Price must be above oracle price.");
 
         marketplaceListings[_index].price = _newPrice;
 
@@ -205,6 +210,22 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         TGEN.safeTransfer(xTGEN, receivedTGEN);
     }
 
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    /**
+    * @dev Updates the maximum oracle price discount.
+    * @notice This function can only be called by the contract owner.
+    * @param _newDiscount The new discount value.
+    */
+    function setMaximumOraclePriceDiscount(uint256 _newDiscount) external onlyOwner {
+        require(_newDiscount >= 0, "Marketplace: Discount must be positive.");
+        require(_newDiscount <= 10000, "Marketplace: Discount cannot be above 10000.");
+
+        maxOraclePriceDiscount = _newDiscount;
+
+        emit UpdateMaximumOraclePriceDiscount(_newDiscount);
+    }
+
     /* ========== MODIFIERS ========== */
 
     modifier indexInRange(uint256 index) {
@@ -219,4 +240,8 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
                 "Marketplace: Only the seller can call this function");
         _;
     }
+
+    /* ========== EVENTS ========== */
+
+    event UpdateMaximumOraclePriceDiscount(uint256 newDiscount);
 }
