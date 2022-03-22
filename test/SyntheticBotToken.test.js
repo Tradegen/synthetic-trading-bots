@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("SyntheticBotToken", () => {
   let deployer;
   let otherUser;
@@ -93,7 +93,7 @@ describe("SyntheticBotToken", () => {
     let tx = await TGEN.transfer(routerAddress, parseEther("1000"));
     await tx.wait();
   });
-  /*
+  
   describe("#remainingRewards", () => {
     it("0 time elapsed", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
@@ -171,7 +171,7 @@ describe("SyntheticBotToken", () => {
         expect(rewardPerToken).to.equal(parseEther("100"));
     });
   });
-  */
+  
   describe("#mintTokens", () => {
     it("no existing positions; max duration", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
@@ -283,7 +283,7 @@ describe("SyntheticBotToken", () => {
       expect(positionInfo[4]).to.equal(0);
       expect(positionInfo[5]).to.equal(3306878306878);         
     });
-    /*
+    
     it("existing positions", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
@@ -348,9 +348,9 @@ describe("SyntheticBotToken", () => {
         expect(positionInfo[3]).to.equal(Number(currentTime) + 2);
         expect(positionInfo[4]).to.equal(0);
         expect(positionInfo[5]).to.equal(317969067969);
-    });*/
+    });
   });
-  /*
+  
   describe("#claimRewards", () => {
     it("one investor; 100 seconds elapsed", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
@@ -761,5 +761,5 @@ describe("SyntheticBotToken", () => {
         expect(positionInfo[4]).to.equal(1605743793243);
         expect(positionInfo[5]).to.equal(317969067969);
     });
-  });*/
-});
+  });
+});*/

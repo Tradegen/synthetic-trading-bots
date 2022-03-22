@@ -1,11 +1,15 @@
 const { expect } = require("chai");
-/*
+
 describe("ExternalContractFactory", () => {
   let deployer;
   let otherUser;
   
   let testToken;
   let testTokenAddress;
+  let testToken2;
+  let testTokenAddress2;
+  let testToken3;
+  let testTokenAddress3;
   let TestTokenFactory;
 
   let feePool;
@@ -22,6 +26,10 @@ describe("ExternalContractFactory", () => {
   let syntheticBotToken;
   let SyntheticBotTokenFactory;
 
+  let router;
+  let routerAddress;
+  let RouterFactory;
+
   let externalContractFactory;
   let externalContractFactoryAddress;
   let ExternalContractFactoryFactory;
@@ -34,13 +42,22 @@ describe("ExternalContractFactory", () => {
     TestTokenFactory = await ethers.getContractFactory('TestTokenERC20');
     FeePoolFactory = await ethers.getContractFactory('FeePool');
     PriceAggregatorRouterFactory = await ethers.getContractFactory('PriceAggregatorRouter');
+    RouterFactory = await ethers.getContractFactory('TestRouter');
     BotPerformanceOracleFactory = await ethers.getContractFactory('BotPerformanceOracle');
     SyntheticBotTokenFactory = await ethers.getContractFactory('SyntheticBotToken');
     ExternalContractFactoryFactory = await ethers.getContractFactory('ExternalContractFactory');
 
-    testToken = await TestTokenFactory.deploy("Test token", "TEST");
+    testToken = await TestTokenFactory.deploy("Test token", "mcUSD");
     await testToken.deployed();
     testTokenAddress = testToken.address;
+
+    testToken2 = await TestTokenFactory.deploy("Test token 2", "TGEN");
+    await testToken2.deployed();
+    testTokenAddress2 = testToken2.address;
+
+    testToken3 = await TestTokenFactory.deploy("Test token", "xTGEN");
+    await testToken3.deployed();
+    testTokenAddress3 = testToken3.address;
 
     feePool = await FeePoolFactory.deploy(testTokenAddress);
     await feePool.deployed();
@@ -49,6 +66,10 @@ describe("ExternalContractFactory", () => {
     priceAggregatorRouter = await PriceAggregatorRouterFactory.deploy();
     await priceAggregatorRouter.deployed();
     priceAggregatorRouterAddress = priceAggregatorRouter.address;
+
+    router = await RouterFactory.deploy(testTokenAddress2);
+    await router.deployed();
+    routerAddress = router.address;
   });
 
   beforeEach(async () => {
@@ -56,7 +77,7 @@ describe("ExternalContractFactory", () => {
     deployer = signers[0];
     otherUser = signers[1];
 
-    externalContractFactory = await ExternalContractFactoryFactory.deploy(priceAggregatorRouterAddress, testTokenAddress, feePoolAddress);
+    externalContractFactory = await ExternalContractFactoryFactory.deploy(priceAggregatorRouterAddress, testTokenAddress, feePoolAddress, routerAddress, testTokenAddress2, testTokenAddress3);
     await externalContractFactory.deployed();
     externalContractFactoryAddress = externalContractFactory.address;
   });
@@ -83,11 +104,14 @@ describe("ExternalContractFactory", () => {
         let tradingBot = await syntheticBotToken.tradingBot();
         expect(tradingBot).to.equal(deployer.address);
 
-        let collateralToken = await syntheticBotToken.collateralToken();
+        let collateralToken = await syntheticBotToken.mcUSD();
         expect(collateralToken).to.equal(testTokenAddress);
 
         let fee = await syntheticBotToken.feePool();
         expect(fee).to.equal(feePoolAddress);
+
+        let route = await syntheticBotToken.router();
+        expect(route).to.equal(routerAddress);
     });
   });
-});*/
+});

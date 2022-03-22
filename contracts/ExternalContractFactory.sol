@@ -19,26 +19,29 @@ contract ExternalContractFactory is IExternalContractFactory {
 
     /* ========== STATE VARIABLES ========== */
 
-    address public immutable router;
+    address public immutable priceAggregatorRouter;
     address public immutable mcUSD;
     address public immutable TGEN;
     address public immutable xTGEN;
     address public immutable feePool;
+    address public immutable router;
 
     mapping(address => uint256) public userFees;
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _router, address _mcUSD, address _feePool, address _TGEN, address _xTGEN) {
-        require(_router != address(0), "ExternalContractFactory: invalid address for router.");
+    constructor(address _priceAggregatorRouter, address _mcUSD, address _feePool, address _router, address _TGEN, address _xTGEN) {
+        require(_priceAggregatorRouter != address(0), "ExternalContractFactory: invalid address for price aggregator router.");
         require(_mcUSD != address(0), "ExternalContractFactory: invalid address for mcUSD.");
         require(_feePool != address(0), "ExternalContractFactory: invalid address for fee pool.");
+        require(_router != address(0), "ExternalContractFactory: invalid address for router.");
         require(_TGEN != address(0), "ExternalContractFactory: invalid address for TGEN.");
         require(_xTGEN != address(0), "ExternalContractFactory: invalid address for xTGEN.");
 
-        router = _router;
+        priceAggregatorRouter = _priceAggregatorRouter;
         mcUSD = _mcUSD;
         feePool = _feePool;
+        router = _router;
         TGEN = _TGEN;
         xTGEN = _xTGEN;
     }
@@ -54,7 +57,7 @@ contract ExternalContractFactory is IExternalContractFactory {
     function createContracts(address _oracle) external override returns (address, address) {
         require(_oracle != address(0), "ExternalContractFactory: invalid address for oracle.");
 
-        address botPerformanceOracle = address(new BotPerformanceOracle(router, _oracle));
+        address botPerformanceOracle = address(new BotPerformanceOracle(priceAggregatorRouter, _oracle));
         address syntheticBotToken = address(new SyntheticBotToken(botPerformanceOracle, msg.sender, mcUSD, TGEN, feePool, router, xTGEN));
 
         emit CreatedContracts(msg.sender, botPerformanceOracle, syntheticBotToken);
