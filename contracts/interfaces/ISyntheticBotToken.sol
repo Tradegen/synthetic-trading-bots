@@ -63,9 +63,11 @@ interface ISyntheticBotToken {
 
     /**
      * @dev Mints synthetic bot tokens.
+     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of mcUSD before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
+     * @param _duration Number of weeks before rewards end.
      */
-    function mintTokens(uint256 _numberOfTokens) external;
+    function mintTokens(uint256 _numberOfTokens, uint256 _duration) external;
 
     /**
      * @dev Claims available rewards for the given position.

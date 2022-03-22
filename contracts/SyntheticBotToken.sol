@@ -12,6 +12,7 @@ import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./interfaces/ITradingBot.sol";
 import "./interfaces/IBotPerformanceOracle.sol";
 import "./interfaces/IFeePool.sol";
+import './interfaces/IRouter.sol';
 
 // Inheritance
 import "./interfaces/ISyntheticBotToken.sol";
@@ -31,12 +32,17 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== STATE VARIABLES ========== */
 
-    uint256 public constant REWARDS_DURATION = 365 days;
+    uint256 public constant MAX_REWARDS_DURATION = 52 weeks;
+    uint256 public constant MIN_REWARDS_DURATION = 4 weeks;
+    uint256 public constant MAX_DEDUCTION = 2000; // 20%, denominated in 10000.
 
     IBotPerformanceOracle public immutable oracle;
-    IERC20 public immutable collateralToken; // mcUSD
+    IERC20 public immutable mcUSD; // mcUSD
+    IERC20 public immutable TGEN;
     ITradingBot public immutable tradingBot;
     IFeePool public immutable feePool;
+    IRouter public immutable router;
+    address public immutable xTGEN;
 
     // Keep track of highest NFT ID.
     uint256 public numberOfPositions;
@@ -52,16 +58,22 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _botPerformanceOracle, address _tradingBot, address _collateralToken, address _feePool) {
+    constructor(address _botPerformanceOracle, address _tradingBot, address _mcUSD, address _TGEN, address _feePool, address _router, address _xTGEN) {
         require(_botPerformanceOracle != address(0), "SyntheticBotToken: invalid address for bot performance oracle.");
         require(_tradingBot != address(0), "SyntheticBotToken: invalid address for trading bot.");
-        require(_collateralToken != address(0), "SyntheticBotToken: invalid address for collateral token.");
+        require(_mcUSD != address(0), "SyntheticBotToken: invalid address for collateral token.");
+        require(_TGEN != address(0), "Marketplace: invalid address for TGEN.");
         require(_feePool != address(0), "SyntheticBotToken: invalid address for fee pool.");
+        require(_router != address(0), "SyntheticBotToken: invalid address for router.");
+        require(_xTGEN != address(0), "SyntheticBotToken: invalid address for xTGEN.");
 
         oracle = IBotPerformanceOracle(_botPerformanceOracle);
         tradingBot = ITradingBot(_tradingBot);
-        collateralToken = IERC20(_collateralToken);
+        mcUSD = IERC20(_mcUSD);
+        TGEN = IERC20(_TGEN);
         feePool = IFeePool(_feePool);
+        router = IRouter(_router);
+        xTGEN = _xTGEN;
     }
 
     /* ========== VIEWS ========== */
@@ -154,34 +166,47 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-   /**
+    /**
      * @dev Mints synthetic bot tokens.
      * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of mcUSD before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
+     * @param _duration Number of weeks before rewards end.
      */
-    function mintTokens(uint256 _numberOfTokens) external override nonReentrant {
+    function mintTokens(uint256 _numberOfTokens, uint256 _duration) external override nonReentrant {
         require(_numberOfTokens > 0, "SyntheticBotToken: number of tokens must be positive.");
+        require(_duration.mul(1 weeks) >= MIN_REWARDS_DURATION && _duration.mul(1 weeks) <= MAX_REWARDS_DURATION, "SyntheticBotToken: duration out of bounds.");
 
         uint256 mintFee = tradingBot.tokenMintFee();
         uint256 botTokenPrice = oracle.getTokenPrice();
         uint256 amountOfUSD = _numberOfTokens.mul(botTokenPrice).div(1e18);
 
-        collateralToken.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(mintFee.add(10000)).div(10000));
-        collateralToken.approve(address(feePool), amountOfUSD.mul(mintFee).div(10000));
+        // Deduct mcUSD based on duration.
+        uint256 deduction = amountOfUSD.mul(MAX_REWARDS_DURATION.sub(_duration.mul(1 weeks))).mul(MAX_DEDUCTION).div(MAX_REWARDS_DURATION.sub(MIN_REWARDS_DURATION)).div(10000);
+
+        // Transfer mint fee to trading bot owner by depositing in FeePool contract on trading bot owner's behalf.
+        mcUSD.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(mintFee.add(10000)).div(10000));
+        mcUSD.approve(address(feePool), amountOfUSD.mul(mintFee).div(10000));
         feePool.deposit(tradingBot.owner(), amountOfUSD.mul(mintFee).div(10000));
+
+        // Swap deduction mcUSD for TGEN and transfer to xTGEN contract.
+        if (deduction > 0) {
+            mcUSD.approve(address(router), deduction);
+            uint256 receivedTGEN = router.swapAssetForTGEN(address(mcUSD), deduction);
+            TGEN.safeTransfer(xTGEN, receivedTGEN);
+        }
 
         numberOfPositions = numberOfPositions.add(1);
         _mint(msg.sender, numberOfPositions, _numberOfTokens, "");
         positions[numberOfPositions] = Position({
             numberOfTokens: _numberOfTokens,
             createdOn: block.timestamp,
-            rewardsEndOn: block.timestamp.add(REWARDS_DURATION),
+            rewardsEndOn: block.timestamp.add(_duration.mul(1 weeks)),
             lastUpdateTime: block.timestamp,
             rewardPerTokenStored: 0,
-            rewardRate: amountOfUSD.div(REWARDS_DURATION)
+            rewardRate: (amountOfUSD.sub(deduction)).div(_duration.mul(1 weeks))
         });
 
-        emit MintedTokens(msg.sender, numberOfPositions, _numberOfTokens);
+        emit MintedTokens(msg.sender, numberOfPositions, _numberOfTokens, _duration);
     }
 
     /**
@@ -229,7 +254,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
         if (reward > 0) {
             rewards[_user][_positionID] = 0;
-            collateralToken.safeTransfer(_user, reward);
+            mcUSD.safeTransfer(_user, reward);
             emit ClaimedRewards(_user, _positionID, reward);
         }
     }
@@ -248,6 +273,6 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== EVENTS ========== */
 
-    event MintedTokens(address user, uint256 positionID, uint256 numberOfTokens);
+    event MintedTokens(address user, uint256 positionID, uint256 numberOfTokens, uint256 numberOfWeeks);
     event ClaimedRewards(address user, uint256 positionID, uint256 amountClaimed);
 }

@@ -21,20 +21,26 @@ contract ExternalContractFactory is IExternalContractFactory {
 
     address public immutable router;
     address public immutable mcUSD;
+    address public immutable TGEN;
+    address public immutable xTGEN;
     address public immutable feePool;
 
     mapping(address => uint256) public userFees;
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _router, address _mcUSD, address _feePool) {
+    constructor(address _router, address _mcUSD, address _feePool, address _TGEN, address _xTGEN) {
         require(_router != address(0), "ExternalContractFactory: invalid address for router.");
         require(_mcUSD != address(0), "ExternalContractFactory: invalid address for mcUSD.");
         require(_feePool != address(0), "ExternalContractFactory: invalid address for fee pool.");
+        require(_TGEN != address(0), "ExternalContractFactory: invalid address for TGEN.");
+        require(_xTGEN != address(0), "ExternalContractFactory: invalid address for xTGEN.");
 
         router = _router;
         mcUSD = _mcUSD;
         feePool = _feePool;
+        TGEN = _TGEN;
+        xTGEN = _xTGEN;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -49,7 +55,7 @@ contract ExternalContractFactory is IExternalContractFactory {
         require(_oracle != address(0), "ExternalContractFactory: invalid address for oracle.");
 
         address botPerformanceOracle = address(new BotPerformanceOracle(router, _oracle));
-        address syntheticBotToken = address(new SyntheticBotToken(botPerformanceOracle, msg.sender, mcUSD, feePool));
+        address syntheticBotToken = address(new SyntheticBotToken(botPerformanceOracle, msg.sender, mcUSD, TGEN, feePool, router, xTGEN));
 
         emit CreatedContracts(msg.sender, botPerformanceOracle, syntheticBotToken);
 
