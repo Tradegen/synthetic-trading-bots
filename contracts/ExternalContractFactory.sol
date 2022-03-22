@@ -2,10 +2,6 @@
 
 pragma solidity ^0.8.3;
 
-// OpenZeppelin
-import "./openzeppelin-solidity/contracts/SafeMath.sol";
-import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
-
 // Internal References
 import "./BotPerformanceOracle.sol";
 import "./SyntheticBotToken.sol";
@@ -14,8 +10,6 @@ import "./SyntheticBotToken.sol";
 import "./interfaces/IExternalContractFactory.sol";
 
 contract ExternalContractFactory is IExternalContractFactory {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
 
@@ -31,13 +25,6 @@ contract ExternalContractFactory is IExternalContractFactory {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _priceAggregatorRouter, address _mcUSD, address _feePool, address _router, address _TGEN, address _xTGEN) {
-        require(_priceAggregatorRouter != address(0), "ExternalContractFactory: invalid address for price aggregator router.");
-        require(_mcUSD != address(0), "ExternalContractFactory: invalid address for mcUSD.");
-        require(_feePool != address(0), "ExternalContractFactory: invalid address for fee pool.");
-        require(_router != address(0), "ExternalContractFactory: invalid address for router.");
-        require(_TGEN != address(0), "ExternalContractFactory: invalid address for TGEN.");
-        require(_xTGEN != address(0), "ExternalContractFactory: invalid address for xTGEN.");
-
         priceAggregatorRouter = _priceAggregatorRouter;
         mcUSD = _mcUSD;
         feePool = _feePool;

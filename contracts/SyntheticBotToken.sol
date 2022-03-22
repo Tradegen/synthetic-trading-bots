@@ -32,9 +32,9 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== STATE VARIABLES ========== */
 
-    uint256 public constant MAX_REWARDS_DURATION = 52 weeks;
-    uint256 public constant MIN_REWARDS_DURATION = 4 weeks;
-    uint256 public constant MAX_DEDUCTION = 2000; // 20%, denominated in 10000.
+    uint256 constant MAX_REWARDS_DURATION = 52 weeks;
+    uint256 constant MIN_REWARDS_DURATION = 4 weeks;
+    uint256 constant MAX_DEDUCTION = 2000; // 20%, denominated in 10000.
 
     IBotPerformanceOracle public immutable oracle;
     IERC20 public immutable mcUSD; // mcUSD
@@ -59,14 +59,6 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _botPerformanceOracle, address _tradingBot, address _mcUSD, address _TGEN, address _feePool, address _router, address _xTGEN) {
-        require(_botPerformanceOracle != address(0), "SyntheticBotToken: invalid address for bot performance oracle.");
-        require(_tradingBot != address(0), "SyntheticBotToken: invalid address for trading bot.");
-        require(_mcUSD != address(0), "SyntheticBotToken: invalid address for collateral token.");
-        require(_TGEN != address(0), "Marketplace: invalid address for TGEN.");
-        require(_feePool != address(0), "SyntheticBotToken: invalid address for fee pool.");
-        require(_router != address(0), "SyntheticBotToken: invalid address for router.");
-        require(_xTGEN != address(0), "SyntheticBotToken: invalid address for xTGEN.");
-
         oracle = IBotPerformanceOracle(_botPerformanceOracle);
         tradingBot = ITradingBot(_tradingBot);
         mcUSD = IERC20(_mcUSD);
@@ -98,8 +90,6 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
      * @return (uint256, uint256, uint256, uint256, uint256, uint256) total number of tokens in the position, timestamp the position was created, timestamp the rewards will end, timestamp the rewards were last updated, number of rewards per token, number of rewards per second.
      */
     function getPosition(uint256 _positionID) external view override returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-        require(_positionID >= 0, "SyntheticBotToken: position ID must be positive.");
-
         Position memory position = positions[_positionID];
 
         return (position.numberOfTokens, position.createdOn, position.rewardsEndOn, position.lastUpdateTime, position.rewardPerTokenStored, position.rewardRate);
@@ -130,9 +120,6 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
      * @return (uint256) User's amount of rewards remaining.
      */
     function remainingRewardsForUser(address _user, uint256 _positionID) external view override returns (uint256) {
-        require(_user != address(0), "SyntheticBotToken: invalid address for user.");
-        require(_positionID >= 0, "SyntheticBotToken: position ID must be positive.");
-
         return (positions[_positionID].numberOfTokens == 0) ? 0 : remainingRewards(_positionID).mul(balanceOf(_user, _positionID)).div(positions[_positionID].numberOfTokens);
     }
 

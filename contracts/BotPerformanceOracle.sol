@@ -35,9 +35,6 @@ contract BotPerformanceOracle is IBotPerformanceOracle, Ownable {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _router, address _oracle) Ownable() {
-        require(_router != address(0), "BotPerformanceOracle: invalid address for router.");
-        require(_oracle != address(0), "BotPerformanceOracle: invalid address for oracle.");
-
         router = IPriceAggregatorRouter(_router);
         oracle = _oracle;
     }
@@ -50,8 +47,6 @@ contract BotPerformanceOracle is IBotPerformanceOracle, Ownable {
      * @return (address, bool, uint256, uint256, uint256) Address of the asset, whether the order was a 'buy', timestamp, asset's price, new trading bot token price.
      */
     function getOrderInfo(uint256 _index) external view override returns (address, bool, uint256, uint256, uint256) {
-        require(_index >= 0, "BotPerformanceOracle: Index must be positive.");
-
         Order memory order = orders[_index];
 
         return (order.asset, order.isBuy, order.timestamp, order.assetPrice, order.newBotTokenPrice);
