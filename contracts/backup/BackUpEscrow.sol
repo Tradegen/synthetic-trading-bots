@@ -5,6 +5,7 @@ pragma solidity ^0.8.3;
 //OpenZeppelin
 import "../openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "../openzeppelin-solidity/contracts/SafeMath.sol";
+import "../openzeppelin-solidity/contracts/Ownable.sol";
 
 // Interfaces
 import '../interfaces/IBackupMode.sol';
@@ -13,7 +14,7 @@ import '../interfaces/ISyntheticBotToken.sol';
 //Inheritance
 import '../interfaces/IBackupEscrow.sol';
 
-contract BackupEscrow is IBackupEscrow {
+contract BackupEscrow is IBackupEscrow, Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -24,7 +25,7 @@ contract BackupEscrow is IBackupEscrow {
     mapping(address => mapping (address => bool)) public hasWithdrawn;
 
     // Contract holds available TGEN for all bot tokens.
-    constructor(address _backupMode, address _TGEN) {
+    constructor(address _backupMode, address _TGEN) Ownable() {
         backupMode = IBackupMode(_backupMode);
         TGEN = IERC20(_TGEN);
     }

@@ -35,7 +35,7 @@ contract BackupMode is IBackupMode, Ownable {
     * @notice Users can withdraw their cost basis in TGEN from the escrow contract.
     * @notice Backup mode will only be turned on if the majority of users want to exit their synthetic bot token positions and are unable to do so through the marketplace.
     */
-    function turnOnBackupMode() external onlyOwner {
+    function turnOnBackupMode() external override onlyOwner {
         require(!useBackup, "BackupMode: already using backup mode.");
 
         useBackup = true;
