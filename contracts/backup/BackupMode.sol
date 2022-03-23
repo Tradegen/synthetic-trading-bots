@@ -5,14 +5,24 @@ pragma solidity ^0.8.3;
 //OpenZeppelin
 import "../openzeppelin-solidity/contracts/Ownable.sol";
 
+// Interfaces
+import '../interfaces/IUbeswapAdapter.sol';
+
 //Inheritance
 import '../interfaces/IBackupMode.sol';
 
 contract BackupMode is IBackupMode, Ownable {
     bool public override useBackup;
     uint256 public override startTime;
+    uint256 public override priceOfTGEN;
 
-    constructor() Ownable() {
+    IUbeswapAdapter public immutable ubeswapAdapter;
+    address public immutable TGEN;
+
+    constructor(address _ubeswapAdapter, address _TGEN) Ownable() {
+        ubeswapAdapter = IUbeswapAdapter(_ubeswapAdapter);
+        TGEN = _TGEN;
+
         useBackup = false;
     }
 
@@ -30,6 +40,7 @@ contract BackupMode is IBackupMode, Ownable {
 
         useBackup = true;
         startTime = block.timestamp;
+        priceOfTGEN = ubeswapAdapter.getPrice(TGEN);
 
         emit TurnedOnBackupMode();
     }

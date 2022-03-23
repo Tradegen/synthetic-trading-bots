@@ -75,4 +75,13 @@ interface ISyntheticBotToken {
      * @param _positionID ID of the position NFT.
      */
     function claimRewards(uint256 _positionID) external;
+
+    /**
+     * @dev Resets the user's cost basis and lower the total cost basis.
+     * @notice Only the BackupEscrow contract can call this function.
+     * @notice This function is called when a user claims their TGEN from the BackupEscrow contract.
+     * @param _user Address of the user.
+     * @return (uint256) User's initial cost basis.
+     */
+    function resetCostBasis(address _user) external returns (uint256);
 }

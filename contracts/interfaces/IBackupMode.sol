@@ -14,6 +14,11 @@ interface IBackupMode {
     function startTime() external view returns (uint256);
 
     /**
+    * @dev Returns the price of TGEN when backup mode was turned on.
+    */
+    function priceOfTGEN() external view returns (uint256);
+
+    /**
     * @dev Turns on backup mode.
     * @notice Only the contract owner can call this function.
     * @notice When backup mode is on, the liquidity bonds program will stop and the protocol will switch to liquidity mining.

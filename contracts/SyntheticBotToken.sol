@@ -13,6 +13,7 @@ import "./interfaces/ITradingBot.sol";
 import "./interfaces/IBotPerformanceOracle.sol";
 import "./interfaces/IFeePool.sol";
 import './interfaces/IRouter.sol';
+import './interfaces/IBackupMode.sol';
 
 // Inheritance
 import "./interfaces/ISyntheticBotToken.sol";
@@ -42,6 +43,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     ITradingBot public immutable tradingBot;
     IFeePool public immutable feePool;
     IRouter public immutable router;
+    IBackupMode public immutable backupMode;
+    address public immutable backupEscrow;
     address public immutable xTGEN;
 
     // Keep track of highest NFT ID.
@@ -56,16 +59,21 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     // User address => NFT ID => accumulated rewards.
     mapping(address => mapping(uint256 => uint256)) public rewards;
 
+    uint256 public totalCostBasis;
+    mapping(address => uint256) public userCostBasis;
+
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _botPerformanceOracle, address _tradingBot, address _mcUSD, address _TGEN, address _feePool, address _router, address _xTGEN) {
+    constructor(address _botPerformanceOracle, address _tradingBot, address _mcUSD, address _TGEN, address _feePool, address _router, address _xTGEN, address _backupMode, address _backupEscrow) {
         oracle = IBotPerformanceOracle(_botPerformanceOracle);
         tradingBot = ITradingBot(_tradingBot);
         mcUSD = IERC20(_mcUSD);
         TGEN = IERC20(_TGEN);
         feePool = IFeePool(_feePool);
         router = IRouter(_router);
+        backupMode = IBackupMode(_backupMode);
         xTGEN = _xTGEN;
+        backupEscrow = _backupEscrow;
     }
 
     /* ========== VIEWS ========== */
@@ -162,6 +170,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     function mintTokens(uint256 _numberOfTokens, uint256 _duration) external override nonReentrant {
         require(_numberOfTokens > 0, "SyntheticBotToken: number of tokens must be positive.");
         require(_duration.mul(1 weeks) >= MIN_REWARDS_DURATION && _duration.mul(1 weeks) <= MAX_REWARDS_DURATION, "SyntheticBotToken: duration out of bounds.");
+        require(!backupMode.useBackup(), "SyntheticBotToken: cannot mint during backup mode.");
 
         uint256 mintFee = tradingBot.tokenMintFee();
         uint256 botTokenPrice = oracle.getTokenPrice();
@@ -181,6 +190,9 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
             uint256 receivedTGEN = router.swapAssetForTGEN(address(mcUSD), deduction);
             TGEN.safeTransfer(xTGEN, receivedTGEN);
         }
+
+        userCostBasis[msg.sender] = userCostBasis[msg.sender].add(amountOfUSD);
+        totalCostBasis = totalCostBasis.add(amountOfUSD);
 
         numberOfPositions = numberOfPositions.add(1);
         _mint(msg.sender, numberOfPositions, _numberOfTokens, "");
@@ -203,6 +215,24 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
      */
     function claimRewards(uint256 _positionID) external override nonReentrant updateReward(msg.sender, _positionID) {
         _getReward(msg.sender, _positionID);
+    }
+
+    /**
+     * @dev Resets the user's cost basis and lower the total cost basis.
+     * @notice Only the BackupEscrow contract can call this function.
+     * @notice This function is called when a user claims their TGEN from the BackupEscrow contract.
+     * @param _user Address of the user.
+     * @return (uint256) User's initial cost basis.
+     */
+    function resetCostBasis(address _user) external override nonReentrant returns (uint256) {
+        require(msg.sender == backupEscrow, "SyntheticBotToken: only the BackupEscrow contract can call this function.");
+
+        uint256 costBasis = userCostBasis[_user];
+
+        totalCostBasis = totalCostBasis.sub(costBasis);
+        userCostBasis[_user] = 0;
+
+        return costBasis;
     }
 
     /**
