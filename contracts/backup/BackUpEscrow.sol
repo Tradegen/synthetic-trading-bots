@@ -36,7 +36,7 @@ contract BackupEscrow is IBackupEscrow, Ownable {
     * @dev Returns the amount of TGEN available based on the cost basis.
     */
     function availableTGEN(uint256 _costBasis) public view override returns (uint256) {
-        return _costBasis.mul(backupMode.priceOfTGEN()).div(1e18);
+        return _costBasis.mul(1e18).div(backupMode.priceOfTGEN());
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
