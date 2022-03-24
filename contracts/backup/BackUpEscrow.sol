@@ -72,7 +72,7 @@ contract BackupEscrow is IBackupEscrow, Ownable {
     */
     function setFactory(address _factory) external onlyOwner {
         require(factory == address(0), "BackupEscrow: already set factory.");
-        
+
         factory = _factory;
 
         emit SetFactory(factory);
@@ -82,7 +82,7 @@ contract BackupEscrow is IBackupEscrow, Ownable {
     * @dev Registers the synthetic bot token, marking it eligible for withdrawals during backup mode.
     * @param _syntheticBotToken Address of the SyntheticBotToken contract.
     */
-    function registerBotToken(address _syntheticBotToken) external onlyFactory {
+    function registerBotToken(address _syntheticBotToken) external override onlyFactory {
         registeredBotToken[_syntheticBotToken] = true;
 
         emit RegisteredBotToken(_syntheticBotToken);

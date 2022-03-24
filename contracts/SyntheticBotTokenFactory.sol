@@ -19,6 +19,7 @@ contract SyntheticBotTokenFactory {
     address public immutable router;
     address public immutable xTGEN;
     address public immutable backupMode;
+    address public immutable owner;
  
     /* ========== CONSTRUCTOR ========== */
 
@@ -30,6 +31,7 @@ contract SyntheticBotTokenFactory {
         router = _router;
         xTGEN = _xTGEN;
         backupMode = _backupMode;
+        owner = msg.sender;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -41,6 +43,7 @@ contract SyntheticBotTokenFactory {
     * @param _tradingBot Address of the TradingBot NFT.
     */
     function createContract(address _oracle, address _tradingBot) external {
+        require(msg.sender == owner, "SyntheticBotTokenFactory: only the owner can call this function.");
         require(_oracle != address(0), "SyntheticBotTokenFactory: invalid address for oracle.");
         require(_tradingBot != address(0), "SyntheticBotTokenFactory: invalid address for trading bot.");
 
