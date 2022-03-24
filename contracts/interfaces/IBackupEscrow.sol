@@ -13,4 +13,10 @@ interface IBackupEscrow {
     * @param _syntheticBotToken Address of the SyntheticBotToken contract.
     */
     function withdraw(address _syntheticBotToken) external;
+
+    /**
+    * @dev Registers the synthetic bot token, marking it eligible for withdrawals during backup mode.
+    * @param _syntheticBotToken Address of the SyntheticBotToken contract.
+    */
+    function registerBotToken(address _syntheticBotToken) external;
 }

@@ -20,9 +20,13 @@ contract BackupEscrow is IBackupEscrow, Ownable {
 
     IBackupMode public immutable backupMode;
     IERC20 public immutable TGEN;
+    address public factory;
 
     // User address => synthetic bot token address => whether the user has withdrawn.
     mapping(address => mapping (address => bool)) public hasWithdrawn;
+
+    // Synthetic bot token address => whether the bot token is registered.
+    mapping(address => bool) public registeredBotToken;
 
     // Contract holds available TGEN for all bot tokens.
     constructor(address _backupMode, address _TGEN) Ownable() {
@@ -59,7 +63,41 @@ contract BackupEscrow is IBackupEscrow, Ownable {
         emit Withdraw(msg.sender, _syntheticBotToken, amountOfTGEN);
     }
 
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    /**
+    * @dev Sets the address of the SyntheticBotTokenFactory contract.
+    * @notice This function can only be called by the contract owner.
+    * @param _factory Address of the factory.
+    */
+    function setFactory(address _factory) external onlyOwner {
+        require(factory == address(0), "BackupEscrow: already set factory.");
+        
+        factory = _factory;
+
+        emit SetFactory(factory);
+    }
+
+    /**
+    * @dev Registers the synthetic bot token, marking it eligible for withdrawals during backup mode.
+    * @param _syntheticBotToken Address of the SyntheticBotToken contract.
+    */
+    function registerBotToken(address _syntheticBotToken) external onlyFactory {
+        registeredBotToken[_syntheticBotToken] = true;
+
+        emit RegisteredBotToken(_syntheticBotToken);
+    }
+
+    /* ========== MODIFIERS ========== */
+
+    modifier onlyFactory() {
+        require(msg.sender == factory, "BackupEscrow: only the SyntheticBotTokenFactory contract can call this function.");
+        _;
+    }
+
     /* ========== EVENTS ========== */
 
     event Withdraw(address user, address syntheticBotToken, uint256 amountOfTGEN);
+    event RegisteredBotToken(address syntheticBotToken);
+    event SetFactory(address factory);
 }
