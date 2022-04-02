@@ -2,9 +2,9 @@
 
 Synthetic trading bots tokenize the performance of trading algos in simulated trades. This enables high-frequency trading on-chain with zero exchange fees and slippage.
 
-Trades are simulated on our own blockchain in response to price updates from Band Protocol oracles. Simulated orders are passed to the BotPerformanceOracle contract through a dedicated oracle.
+Trades are simulated on our own blockchain in response to price updates from Band Protocol oracles. Simulated orders are passed to the BotPerformanceOracle contract through a dedicated keeper node. A decentralized keeper network is used for relaying bot performance data from Tradegen's blockchain to EVM-compatible blockchains at regular intervals.
 
-Bot token positions are NFTs that return deposited collateral linearly over 365 days. These NFTs are tradable on the platform's marketplace.
+This repo shows an example of how bot performance data could be integrated into an app. In this app, bot token positions are NFTs that gradually vest deposited collateral. These NFTs are tradable on the platform's marketplace.
 
 ## Disclaimer
 
