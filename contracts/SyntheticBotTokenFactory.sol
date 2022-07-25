@@ -37,15 +37,15 @@ contract SyntheticBotTokenFactory {
     /**
     * @notice Creates a SyntheticBotToken contract.
     * @dev Assumes the BackupEscrow already has the factory set to this contract.
-    * @param _oracle Address of the dedicated oracle for the trading bot's synthetic token.
+    * @param _dataFeed Address of the trading bot's BotPerformanceDataFeed contract.
     * @param _tradingBot Address of the TradingBot NFT.
     */
-    function createContract(address _oracle, address _tradingBot) external {
+    function createContract(address _dataFeed, address _tradingBot) external {
         require(msg.sender == owner, "SyntheticBotTokenFactory: Only the owner can call this function.");
-        require(_oracle != address(0), "SyntheticBotTokenFactory: Invalid address for oracle.");
+        require(_dataFeed != address(0), "SyntheticBotTokenFactory: Invalid address for data feed.");
         require(_tradingBot != address(0), "SyntheticBotTokenFactory: Invalid address for trading bot.");
 
-        address syntheticBotToken = address(new SyntheticBotToken(_oracle, _tradingBot, stablecoin, TGEN, router, xTGEN, backupMode, address(backupEscrow)));
+        address syntheticBotToken = address(new SyntheticBotToken(_dataFeed, _tradingBot, stablecoin, TGEN, router, xTGEN, backupMode, address(backupEscrow)));
         backupEscrow.registerBotToken(syntheticBotToken);
 
         emit CreatedContract(syntheticBotToken);

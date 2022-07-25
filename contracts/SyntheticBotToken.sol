@@ -10,7 +10,7 @@ import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
 // Interfaces
 import "./interfaces/ITradingBot.sol";
-import "./interfaces/IBotPerformanceOracle.sol";
+import "./interfaces/IBotPerformanceDataFeed.sol";
 import './interfaces/IRouter.sol';
 import './interfaces/IBackupMode.sol';
 
@@ -36,7 +36,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     uint256 constant MIN_REWARDS_DURATION = 4 weeks;
     uint256 constant MAX_DEDUCTION = 2000; // 20%, denominated in 10000.
 
-    IBotPerformanceOracle public immutable oracle;
+    IBotPerformanceDataFeed public immutable dataFeed;
     IERC20 public immutable stablecoin;
     IERC20 public immutable TGEN;
     ITradingBot public immutable tradingBot;
@@ -62,8 +62,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _botPerformanceOracle, address _tradingBot, address _stablecoin, address _TGEN, address _router, address _xTGEN, address _backupMode, address _backupEscrow) {
-        oracle = IBotPerformanceOracle(_botPerformanceOracle);
+    constructor(address _botPerformanceDataFeed, address _tradingBot, address _stablecoin, address _TGEN, address _router, address _xTGEN, address _backupMode, address _backupEscrow) {
+        dataFeed = IBotPerformanceDataFeed(_botPerformanceDataFeed);
         tradingBot = ITradingBot(_tradingBot);
         stablecoin = IERC20(_stablecoin);
         TGEN = IERC20(_TGEN);
@@ -76,21 +76,14 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     /* ========== VIEWS ========== */
 
     /**
-     * @dev Returns the USD price of the synthetic bot token.
-     */
-    function getTokenPrice() external view override returns (uint256) {
-        return oracle.getTokenPrice();
-    }
-
-    /**
-     * @dev Returns the address of the trading bot associated with this token.
+     * @notice Returns the address of the trading bot associated with this token.
      */
     function getTradingBot() external view override returns (address) {
         return address(tradingBot);
     }
 
     /**
-     * @dev Given a position ID, returns the position info.
+     * @notice Given a position ID, returns the position info.
      * @param _positionID ID of the position NFT.
      * @return (uint256, uint256, uint256, uint256, uint256, uint256) total number of tokens in the position, timestamp the position was created, timestamp the rewards will end, timestamp the rewards were last updated, number of rewards per token, number of rewards per second.
      */
@@ -101,7 +94,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the latest timestamp to use when calculating available rewards.
+     * @notice Returns the latest timestamp to use when calculating available rewards.
      * @param _positionID ID of the position NFT.
      * @return (uint256) The latest timestamp to use for rewards calculations.
      */
@@ -110,7 +103,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the total amount of rewards remaining for the given position.
+     * @notice Returns the total amount of rewards remaining for the given position.
      * @param _positionID ID of the position NFT.
      * @return (uint256) Total amount of rewards remaining.
      */
@@ -119,7 +112,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the user's amount of rewards remaining for the given position.
+     * @notice Returns the user's amount of rewards remaining for the given position.
      * @param _user Address of the user.
      * @param _positionID ID of the position NFT.
      * @return (uint256) User's amount of rewards remaining.
@@ -129,8 +122,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the number of rewards available per token for the given position.
-     * @notice Scaled by 1e18 to avoid flooring when calculating earned().
+     * @notice Returns the number of rewards available per token for the given position.
+     * @dev Scaled by 1e18 to avoid flooring when calculating earned().
      * @param _positionID ID of the position NFT.
      * @return (uint256) Number of rewards per token.
      */
@@ -147,7 +140,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the amount of rewards the user has earned for the given position.
+     * @notice Returns the amount of rewards the user has earned for the given position.
      * @param _account Address of the user.
      * @param _positionID ID of the position NFT.
      * @return (uint256) Amount of rewards earned.
@@ -159,8 +152,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-     * @dev Mints synthetic bot tokens.
-     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of stablecoin before calling this function.
+     * @notice Mints synthetic bot tokens.
+     * @dev Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of stablecoin before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
      * @param _duration Number of weeks before rewards end.
      */
@@ -169,7 +162,10 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
         require(_duration.mul(1 weeks) >= MIN_REWARDS_DURATION && _duration.mul(1 weeks) <= MAX_REWARDS_DURATION, "SyntheticBotToken: Duration out of bounds.");
         require(!backupMode.useBackup(), "SyntheticBotToken: Cannot mint during backup mode.");
 
-        uint256 botTokenPrice = oracle.getTokenPrice();
+        TGEN.safeTransferFrom(msg.sender, address(this), dataFeed.usageFee());
+        TGEN.approve(address(dataFeed), dataFeed.usageFee());
+
+        uint256 botTokenPrice = dataFeed.getTokenPrice();
         uint256 amountOfUSD = _numberOfTokens.mul(botTokenPrice).div(1e18);
 
         // Deduct stablecoin based on duration.
