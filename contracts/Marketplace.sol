@@ -2,36 +2,31 @@
 
 pragma solidity ^0.8.3;
 
-// Openzeppelin
+// Openzeppelin.
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/Ownable.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/IERC1155.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
 
-// Interfaces
+// Interfaces.
 import './interfaces/ITradingBot.sol';
 import './interfaces/ISyntheticBotToken.sol';
 import './interfaces/IRouter.sol';
 import "./interfaces/IFeePool.sol";
 
-// Inheritance
+// Inheritance.
 import './interfaces/IMarketplace.sol';
 
 contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable mcUSD;
+    IERC20 public immutable stablecoin;
     IRouter public immutable router;
     IERC20 public immutable TGEN;
     IFeePool public immutable feePool;
     address public immutable xTGEN;
-
-    // Maximum discount below oracle price.
-    // Denominated in 10000.
-    // Ex) if value is 100, minimum listing price is 0.99 * oracle price.
-    uint256 public maxOraclePriceDiscount;
 
     // Starts at index 1; increases without bounds.
     uint256 public numberOfMarketplaceListings;
@@ -43,14 +38,14 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     // Returns 0 if user is not selling the NFT ID.
     mapping (address => mapping (address => mapping (uint256 => uint256))) public userToID; 
 
-    constructor(address _mcUSD, address _router, address _TGEN, address _feePool, address _xTGEN) Ownable() {
-        require(_mcUSD != address(0), "Marketplace: invalid address for mcUSD.");
-        require(_router != address(0), "Marketplace: invalid address for router.");
-        require(_TGEN != address(0), "Marketplace: invalid address for TGEN.");
-        require(_feePool != address(0), "Marketplace: invalid address for fee pool.");
-        require(_xTGEN != address(0), "Marketplace: invalid address for xTGEN.");
+    constructor(address _stablecoin, address _router, address _TGEN, address _feePool, address _xTGEN) Ownable() {
+        require(_stablecoin != address(0), "Marketplace: Invalid address for stablecoin.");
+        require(_router != address(0), "Marketplace: Invalid address for router.");
+        require(_TGEN != address(0), "Marketplace: Invalid address for TGEN.");
+        require(_feePool != address(0), "Marketplace: Invalid address for fee pool.");
+        require(_xTGEN != address(0), "Marketplace: Invalid address for xTGEN.");
 
-        mcUSD = IERC20(_mcUSD);
+        stablecoin = IERC20(_stablecoin);
         router = IRouter(_router);
         TGEN = IERC20(_TGEN);
         feePool = IFeePool(_feePool);
@@ -60,7 +55,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     /* ========== VIEWS ========== */
 
     /**
-    * @dev Given the index of a marketplace listing, returns the listing's data.
+    * @notice Given the index of a marketplace listing, returns the listing's data.
     * @param _index Index of the marketplace listing.
     * @return (address, bool, address, uint256, uint256, uint256) Address of the seller, whether the listing exists, address of the synthetic bot token, position's NFT ID, number of tokens, and the price (in USD).
     */
@@ -70,66 +65,27 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
         return (listing.seller, listing.exists, listing.botTokenAddress, listing.positionID, listing.numberOfTokens, listing.price);
     }
 
-    /**
-    * @dev Given the index of a marketplace listing, returns the fair value of the listing's token.
-    * @notice Fair value is defined as [oracle price + (remaining rewards / number of tokens in position)].
-    * @param _index Index of the marketplace listing.
-    * @return (uint256) Fair value of the listing's token.
-    */
-    function calculateFairValue(uint256 _index) public view override indexInRange(_index) returns (uint256) {
-        MarketplaceListing memory listing = marketplaceListings[_index];
-
-        uint256 remainingRewards = ISyntheticBotToken(listing.botTokenAddress).remainingRewards(listing.positionID);
-        (uint256 numberOfTokens,,,,,) = ISyntheticBotToken(listing.botTokenAddress).getPosition(listing.positionID);
-
-        return ISyntheticBotToken(listing.botTokenAddress).getTokenPrice().add(remainingRewards.div(numberOfTokens));
-    }
-
-    /**
-    * @dev Given the index of a marketplace listing, calculates the difference between the listed price and the token's fair value.
-    * @notice The returned value is scaled by 10000 to represent a percentage with 2 decimal places.
-    * @notice Fair value is defined as [oracle price + (remaining rewards / number of tokens in position)].
-    * @param _index Index of the marketplace listing.
-    * @return (bool, uint256) Whether the price is above fair value, and the % difference between listed price and fair value.
-    */
-    function calculatePriceDifference(uint256 _index) external view override indexInRange(_index) returns (bool, uint256) {
-        MarketplaceListing memory listing = marketplaceListings[_index];
-        uint256 fairValue = calculateFairValue(_index);
-
-        if (listing.price >= fairValue) {
-            return (true, (listing.price.sub(fairValue)).mul(10000).mul(1e18).div(fairValue));
-        }
-
-        return (false, (fairValue.sub(listing.price)).mul(10000).mul(1e18).div(fairValue));
-    }
-
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Purchases tokens in the position at the given index.
+    * @notice Purchases tokens in the position at the given index.
     * @param _index Index of the marketplace listing.
     * @param _numberOfTokens Number of tokens to purchase.
     */
     function purchase(uint256 _index, uint256 _numberOfTokens) external override indexInRange(_index) {
-        require(marketplaceListings[_index].exists, "Marketplace: listing does not exist.");
+        require(marketplaceListings[_index].exists, "Marketplace: Listing does not exist.");
         require(msg.sender != marketplaceListings[_index].seller, "Marketplace: Cannot buy your own position.");
-        require(_numberOfTokens > 0, "Marketplace: number of tokens must be positive.");
+        require(_numberOfTokens > 0, "Marketplace: Number of tokens must be positive.");
 
         MarketplaceListing memory listing = marketplaceListings[_index];
 
         uint256 price = listing.price;
         uint256 amountOfUSD = price.mul(_numberOfTokens).div(1e18);
-        uint256 transactionFee = ITradingBot(ISyntheticBotToken(listing.botTokenAddress).getTradingBot()).tokenTradeFee();
-        address botOwner = ITradingBot(ISyntheticBotToken(listing.botTokenAddress).getTradingBot()).owner();
 
-        mcUSD.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(transactionFee.add(10000)).div(10000));
-
-        // Transfer mcUSD to bot owner.
-        mcUSD.approve(address(feePool), amountOfUSD.mul(transactionFee).div(10000));
-        feePool.deposit(botOwner, amountOfUSD.mul(transactionFee).div(10000));
+        stablecoin.safeTransferFrom(msg.sender, address(this), amountOfUSD);
         
-        // Transfer mcUSD to seller.
-        mcUSD.safeTransfer(listing.seller, amountOfUSD);
+        // Transfer stablecoin to seller.
+        stablecoin.safeTransfer(listing.seller, amountOfUSD);
 
         // Update state variables.
         _removeTokensFromListing(listing.botTokenAddress, listing.positionID, listing.seller, _index, _numberOfTokens);
@@ -138,19 +94,18 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     }
 
     /**
-    * @dev Creates a new marketplace listing with the given price and NFT ID.
+    * @notice Creates a new marketplace listing with the given price and NFT ID.
     * @param _botToken Address of the synthetic bot token.
     * @param _ID ID of the SyntheticBotToken position NFT.
     * @param _price USD price per token.
     * @param _numberOfTokens Number of tokens to sell.
     */
     function createListing(address _botToken, uint256 _ID, uint256 _price, uint256 _numberOfTokens) external override {
-        require(_botToken != address(0), "Marketplace: invalid adderss for synthetic bot token.");
+        require(_botToken != address(0), "Marketplace: Invalid adderss for synthetic bot token.");
         require(userToID[msg.sender][_botToken][_ID] == 0, "Marketplace: Already have a marketplace listing for this NFT.");
         require(_price > 0, "Marketplace: Price must be greater than 0");
         require(_numberOfTokens > 0, "Marketplace: Number of tokens must be greater than 0");
         require(IERC1155(_botToken).balanceOf(msg.sender, _ID) >= _numberOfTokens, "Marketplace: Not enough tokens.");
-        require(_price >= ISyntheticBotToken(_botToken).getTokenPrice().mul(10000 - maxOraclePriceDiscount).div(10000), "Marketplace: Price must be above oracle price.");
 
         numberOfMarketplaceListings = numberOfMarketplaceListings.add(1);
         userToID[msg.sender][_botToken][_ID] = numberOfMarketplaceListings;
@@ -163,7 +118,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     }
 
     /**
-    * @dev Removes the marketplace listing at the given index.
+    * @notice Removes the marketplace listing at the given index.
     * @param _index Index of the marketplace listing.
     */
     function removeListing(uint256 _index) external override indexInRange(_index) onlySeller(_index) {
@@ -175,13 +130,12 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     }
 
     /**
-    * @dev Updates the price of the given marketplace listing.
+    * @notice Updates the price of the given marketplace listing.
     * @param _index Index of the marketplace listing.
     * @param _newPrice USD price per token.
     */
     function updatePrice(uint256 _index, uint256 _newPrice) external override indexInRange(_index) onlySeller(_index) {
-        require(_newPrice > 0, "Marketplace: New price must be greater than 0");
-        require(_newPrice >= ISyntheticBotToken(marketplaceListings[_index].botTokenAddress).getTokenPrice().mul(10000 - maxOraclePriceDiscount).div(10000), "Marketplace: Price must be above oracle price.");
+        require(_newPrice > 0, "Marketplace: New price must be greater than 0.");
 
         marketplaceListings[_index].price = _newPrice;
 
@@ -189,12 +143,12 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     }
 
     /**
-    * @dev Updates the quantity of the given marketplace listing.
+    * @notice Updates the quantity of the given marketplace listing.
     * @param _index Index of the marketplace listing.
     * @param _newQuantity New number of tokens to sell.
     */
     function updateQuantity(uint256 _index, uint256 _newQuantity) external override indexInRange(_index) onlySeller(_index) {
-        require(_newQuantity > 0, "Marketplace: New quantity must be greater than 0");
+        require(_newQuantity > 0, "Marketplace: New quantity must be greater than 0.");
 
         MarketplaceListing memory listing = marketplaceListings[_index];
 
@@ -213,9 +167,9 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-    * @dev Removes tokens from the marketplace listing.
-    * @notice Sets the marketplace listing's 'exists' variable to false if no tokens remaining.
-    * @notice Marketplace contract accumulates rewards from synthetic bot token while token is listed for sale.
+    * @notice Removes tokens from the marketplace listing.
+    * @dev Sets the marketplace listing's 'exists' variable to false if no tokens remaining.
+    * @dev Marketplace contract accumulates rewards from synthetic bot token while token is listed for sale.
     *         Rewards are swapped for TGEN and transferred to xTGEN contract.
     * @param _botToken Address of the synthetic bot token.
     * @param _positionID Position's NFT ID.
@@ -232,31 +186,15 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
             userToID[_user][_botToken][marketplaceListings[_index].positionID] = 0;
         }
 
-        uint256 initialBalance = mcUSD.balanceOf(address(this));
+        uint256 initialBalance = stablecoin.balanceOf(address(this));
 
         // Transfer tokens to buyer.
         IERC1155(_botToken).setApprovalForAll(msg.sender, true);
         IERC1155(_botToken).safeTransferFrom(address(this), msg.sender, _positionID, _numberOfTokens, "");
 
-        mcUSD.approve(address(router), mcUSD.balanceOf(address(this)).sub(initialBalance));
-        uint256 receivedTGEN = router.swapAssetForTGEN(address(mcUSD), mcUSD.balanceOf(address(this)).sub(initialBalance));
+        stablecoin.approve(address(router), stablecoin.balanceOf(address(this)).sub(initialBalance));
+        uint256 receivedTGEN = router.swapAssetForTGEN(address(stablecoin), stablecoin.balanceOf(address(this)).sub(initialBalance));
         TGEN.safeTransfer(xTGEN, receivedTGEN);
-    }
-
-    /* ========== RESTRICTED FUNCTIONS ========== */
-
-    /**
-    * @dev Updates the maximum oracle price discount.
-    * @notice This function can only be called by the contract owner.
-    * @param _newDiscount The new discount value.
-    */
-    function setMaximumOraclePriceDiscount(uint256 _newDiscount) external onlyOwner {
-        require(_newDiscount >= 0, "Marketplace: Discount must be positive.");
-        require(_newDiscount <= 10000, "Marketplace: Discount cannot be above 10000.");
-
-        maxOraclePriceDiscount = _newDiscount;
-
-        emit UpdateMaximumOraclePriceDiscount(_newDiscount);
     }
 
     /* ========== MODIFIERS ========== */
@@ -264,17 +202,13 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     modifier indexInRange(uint256 index) {
         require(index > 0 &&
                 index <= numberOfMarketplaceListings,
-                "Marketplace: Index out of range");
+                "Marketplace: Index out of range.");
         _;
     }
 
     modifier onlySeller(uint256 index) {
         require(msg.sender == marketplaceListings[index].seller,
-                "Marketplace: Only the seller can call this function");
+                "Marketplace: Only the seller can call this function.");
         _;
     }
-
-    /* ========== EVENTS ========== */
-
-    event UpdateMaximumOraclePriceDiscount(uint256 newDiscount);
 }

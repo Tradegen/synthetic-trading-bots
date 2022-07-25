@@ -11,7 +11,6 @@ import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 // Interfaces
 import "./interfaces/ITradingBot.sol";
 import "./interfaces/IBotPerformanceOracle.sol";
-import "./interfaces/IFeePool.sol";
 import './interfaces/IRouter.sol';
 import './interfaces/IBackupMode.sol';
 
@@ -38,10 +37,9 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     uint256 constant MAX_DEDUCTION = 2000; // 20%, denominated in 10000.
 
     IBotPerformanceOracle public immutable oracle;
-    IERC20 public immutable mcUSD; // mcUSD
+    IERC20 public immutable stablecoin;
     IERC20 public immutable TGEN;
     ITradingBot public immutable tradingBot;
-    IFeePool public immutable feePool;
     IRouter public immutable router;
     IBackupMode public immutable backupMode;
     address public immutable backupEscrow;
@@ -64,12 +62,11 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _botPerformanceOracle, address _tradingBot, address _mcUSD, address _TGEN, address _feePool, address _router, address _xTGEN, address _backupMode, address _backupEscrow) {
+    constructor(address _botPerformanceOracle, address _tradingBot, address _stablecoin, address _TGEN, address _router, address _xTGEN, address _backupMode, address _backupEscrow) {
         oracle = IBotPerformanceOracle(_botPerformanceOracle);
         tradingBot = ITradingBot(_tradingBot);
-        mcUSD = IERC20(_mcUSD);
+        stablecoin = IERC20(_stablecoin);
         TGEN = IERC20(_TGEN);
-        feePool = IFeePool(_feePool);
         router = IRouter(_router);
         backupMode = IBackupMode(_backupMode);
         xTGEN = _xTGEN;
@@ -163,31 +160,27 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /**
      * @dev Mints synthetic bot tokens.
-     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of mcUSD before calling this function.
+     * @notice Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of stablecoin before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
      * @param _duration Number of weeks before rewards end.
      */
     function mintTokens(uint256 _numberOfTokens, uint256 _duration) external override nonReentrant {
-        require(_numberOfTokens > 0, "SyntheticBotToken: number of tokens must be positive.");
-        require(_duration.mul(1 weeks) >= MIN_REWARDS_DURATION && _duration.mul(1 weeks) <= MAX_REWARDS_DURATION, "SyntheticBotToken: duration out of bounds.");
-        require(!backupMode.useBackup(), "SyntheticBotToken: cannot mint during backup mode.");
+        require(_numberOfTokens > 0, "SyntheticBotToken: Number of tokens must be positive.");
+        require(_duration.mul(1 weeks) >= MIN_REWARDS_DURATION && _duration.mul(1 weeks) <= MAX_REWARDS_DURATION, "SyntheticBotToken: Duration out of bounds.");
+        require(!backupMode.useBackup(), "SyntheticBotToken: Cannot mint during backup mode.");
 
-        uint256 mintFee = tradingBot.tokenMintFee();
         uint256 botTokenPrice = oracle.getTokenPrice();
         uint256 amountOfUSD = _numberOfTokens.mul(botTokenPrice).div(1e18);
 
-        // Deduct mcUSD based on duration.
+        // Deduct stablecoin based on duration.
         uint256 deduction = amountOfUSD.mul(MAX_REWARDS_DURATION.sub(_duration.mul(1 weeks))).mul(MAX_DEDUCTION).div(MAX_REWARDS_DURATION.sub(MIN_REWARDS_DURATION)).div(10000);
 
-        // Transfer mint fee to trading bot owner by depositing in FeePool contract on trading bot owner's behalf.
-        mcUSD.safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(mintFee.add(10000)).div(10000));
-        mcUSD.approve(address(feePool), amountOfUSD.mul(mintFee).div(10000));
-        feePool.deposit(tradingBot.owner(), amountOfUSD.mul(mintFee).div(10000));
+        stablecoin.safeTransferFrom(msg.sender, address(this), amountOfUSD);
 
-        // Swap deduction mcUSD for TGEN and transfer to xTGEN contract.
+        // Swap deduction stablecoin for TGEN and transfer to xTGEN contract.
         if (deduction > 0) {
-            mcUSD.approve(address(router), deduction);
-            uint256 receivedTGEN = router.swapAssetForTGEN(address(mcUSD), deduction);
+            stablecoin.approve(address(router), deduction);
+            uint256 receivedTGEN = router.swapAssetForTGEN(address(stablecoin), deduction);
             TGEN.safeTransfer(xTGEN, receivedTGEN);
         }
 
@@ -209,8 +202,8 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-     * @dev Claims available rewards for the given position.
-     * @notice Only the position owner can call this function.
+     * @notice Claims available rewards for the given position.
+     * @dev Only the position owner can call this function.
      * @param _positionID ID of the position NFT.
      */
     function claimRewards(uint256 _positionID) external override nonReentrant updateReward(msg.sender, _positionID) {
@@ -218,14 +211,14 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-     * @dev Resets the user's cost basis and lower the total cost basis.
-     * @notice Only the BackupEscrow contract can call this function.
-     * @notice This function is called when a user claims their TGEN from the BackupEscrow contract.
+     * @notice Resets the user's cost basis and lower the total cost basis.
+     * @dev Only the BackupEscrow contract can call this function.
+     * @dev This function is called when a user claims their TGEN from the BackupEscrow contract.
      * @param _user Address of the user.
      * @return (uint256) User's initial cost basis.
      */
     function resetCostBasis(address _user) external override nonReentrant returns (uint256) {
-        require(msg.sender == backupEscrow, "SyntheticBotToken: only the BackupEscrow contract can call this function.");
+        require(msg.sender == backupEscrow, "SyntheticBotToken: Only the BackupEscrow contract can call this function.");
 
         uint256 costBasis = userCostBasis[_user];
 
@@ -236,7 +229,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     }
 
     /**
-    * @dev Transfers tokens from seller to buyer.
+    * @notice Transfers tokens from seller to buyer.
     * @param from Address of the seller.
     * @param to Address of the buyer.
     * @param id NFT ID of the position.
@@ -246,9 +239,9 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     function safeTransferFrom(address from, address to, uint id, uint amount, bytes memory data) public override updateReward(from, id) updateReward(to, id) {
         require(
             from == _msgSender() || isApprovedForAll(from, _msgSender()),
-            "SyntheticBotToken: caller is not owner nor approved."
+            "SyntheticBotToken: Caller is not owner nor approved."
         );
-        require(balanceOf(from, id) >= amount, "SyntheticBotToken: not enough tokens.");
+        require(balanceOf(from, id) >= amount, "SyntheticBotToken: Not enough tokens.");
 
         // Get user's reward before transferring tokens.
         _getReward(from, id);
@@ -262,7 +255,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-     * @dev Claims the user's available rewards for the given position.
+     * @notice Claims the user's available rewards for the given position.
      * @param _user, Address of the user.
      * @param _positionID ID of the position NFT.
      */
@@ -271,7 +264,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
         if (reward > 0) {
             rewards[_user][_positionID] = 0;
-            mcUSD.safeTransfer(_user, reward);
+            stablecoin.safeTransfer(_user, reward);
             emit ClaimedRewards(_user, _positionID, reward);
         }
     }

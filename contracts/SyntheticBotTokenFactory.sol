@@ -13,9 +13,8 @@ contract SyntheticBotTokenFactory {
     /* ========== STATE VARIABLES ========== */
 
     IBackupEscrow public immutable backupEscrow;
-    address public immutable mcUSD;
+    address public immutable stablecoin;
     address public immutable TGEN;
-    address public immutable feePool;
     address public immutable router;
     address public immutable xTGEN;
     address public immutable backupMode;
@@ -23,11 +22,10 @@ contract SyntheticBotTokenFactory {
  
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _backupEscrow, address _mcUSD, address _TGEN, address _feePool, address _router, address _xTGEN, address _backupMode) {
+    constructor(address _backupEscrow, address _stablecoin, address _TGEN, address _router, address _xTGEN, address _backupMode) {
         backupEscrow = IBackupEscrow(_backupEscrow);
-        mcUSD = _mcUSD;
+        stablecoin = _stablecoin;
         TGEN = _TGEN;
-        feePool = _feePool;
         router = _router;
         xTGEN = _xTGEN;
         backupMode = _backupMode;
@@ -37,17 +35,17 @@ contract SyntheticBotTokenFactory {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Creates a SyntheticBotToken contract.
-    * @notice Assumes the BackupEscrow already has the factory set to this contract.
+    * @notice Creates a SyntheticBotToken contract.
+    * @dev Assumes the BackupEscrow already has the factory set to this contract.
     * @param _oracle Address of the dedicated oracle for the trading bot's synthetic token.
     * @param _tradingBot Address of the TradingBot NFT.
     */
     function createContract(address _oracle, address _tradingBot) external {
-        require(msg.sender == owner, "SyntheticBotTokenFactory: only the owner can call this function.");
-        require(_oracle != address(0), "SyntheticBotTokenFactory: invalid address for oracle.");
-        require(_tradingBot != address(0), "SyntheticBotTokenFactory: invalid address for trading bot.");
+        require(msg.sender == owner, "SyntheticBotTokenFactory: Only the owner can call this function.");
+        require(_oracle != address(0), "SyntheticBotTokenFactory: Invalid address for oracle.");
+        require(_tradingBot != address(0), "SyntheticBotTokenFactory: Invalid address for trading bot.");
 
-        address syntheticBotToken = address(new SyntheticBotToken(_oracle, _tradingBot, mcUSD, TGEN, feePool, router, xTGEN, backupMode, address(backupEscrow)));
+        address syntheticBotToken = address(new SyntheticBotToken(_oracle, _tradingBot, stablecoin, TGEN, router, xTGEN, backupMode, address(backupEscrow)));
         backupEscrow.registerBotToken(syntheticBotToken);
 
         emit CreatedContract(syntheticBotToken);

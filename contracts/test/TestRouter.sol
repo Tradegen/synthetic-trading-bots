@@ -15,7 +15,7 @@ contract TestRouter is IRouter {
     IERC20 public immutable TGEN;
 
     constructor(address _TGEN) {
-        require(_TGEN != address(0), "Router: invalid address for TGEN.");
+        require(_TGEN != address(0), "Router: Invalid address for TGEN.");
 
         TGEN = IERC20(_TGEN);
     }
@@ -23,11 +23,11 @@ contract TestRouter is IRouter {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Sends TGEN back to caller at 1:1 ratio.
+    * @notice Sends TGEN back to caller at 1:1 ratio.
     */
     function swapAssetForTGEN(address _asset, uint256 _amount) external override returns (uint256) {
-        require(_asset != address(0), "Router: invalid asset address.");
-        require(_amount > 0, "Router: amount must be positive.");
+        require(_asset != address(0), "Router: Invalid asset address.");
+        require(_amount > 0, "Router: Amount must be positive.");
 
         IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);
         TGEN.safeTransfer(msg.sender, _amount);
@@ -36,14 +36,14 @@ contract TestRouter is IRouter {
     }
 
     /**
-    * @dev Placeholder for testing.
+    * @notice Placeholder for testing.
     */
     function swapTGENForAsset(address, uint256) external override returns (uint256) {
         return 0;
     }
 
     /**
-    * @dev Placeholder for testing.
+    * @notice Placeholder for testing.
     */
     function addLiquidity(address, uint256, uint256) external override {
         return;
