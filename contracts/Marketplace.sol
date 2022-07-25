@@ -4,7 +4,6 @@ pragma solidity ^0.8.3;
 
 // Openzeppelin.
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
-import "./openzeppelin-solidity/contracts/Ownable.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/IERC1155.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
@@ -13,19 +12,17 @@ import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
 import './interfaces/ITradingBot.sol';
 import './interfaces/ISyntheticBotToken.sol';
 import './interfaces/IRouter.sol';
-import "./interfaces/IFeePool.sol";
 
 // Inheritance.
 import './interfaces/IMarketplace.sol';
 
-contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
+contract Marketplace is IMarketplace, ERC1155Holder {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     IERC20 public immutable stablecoin;
     IRouter public immutable router;
     IERC20 public immutable TGEN;
-    IFeePool public immutable feePool;
     address public immutable xTGEN;
 
     // Starts at index 1; increases without bounds.
@@ -38,17 +35,15 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     // Returns 0 if user is not selling the NFT ID.
     mapping (address => mapping (address => mapping (uint256 => uint256))) public userToID; 
 
-    constructor(address _stablecoin, address _router, address _TGEN, address _feePool, address _xTGEN) Ownable() {
+    constructor(address _stablecoin, address _router, address _TGEN, address _xTGEN) {
         require(_stablecoin != address(0), "Marketplace: Invalid address for stablecoin.");
         require(_router != address(0), "Marketplace: Invalid address for router.");
         require(_TGEN != address(0), "Marketplace: Invalid address for TGEN.");
-        require(_feePool != address(0), "Marketplace: Invalid address for fee pool.");
         require(_xTGEN != address(0), "Marketplace: Invalid address for xTGEN.");
 
         stablecoin = IERC20(_stablecoin);
         router = IRouter(_router);
         TGEN = IERC20(_TGEN);
-        feePool = IFeePool(_feePool);
         xTGEN = _xTGEN;
     }
 

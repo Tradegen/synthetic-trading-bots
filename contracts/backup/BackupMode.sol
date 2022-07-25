@@ -34,20 +34,20 @@ contract BackupMode is IBackupMode, Ownable {
 
         useBackup = false;
     }
-
+    
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Turns on backup mode.
-    * @notice Only the contract owner can call this function.
-    * @notice Assumes that there's enough TGEN in this contract.
-    * @notice When backup mode is on, minting will be paused for synthetic bot tokens.
-    * @notice Users can withdraw their cost basis in TGEN from the escrow contract.
-    * @notice Backup mode will only be turned on if the majority of users want to exit their synthetic bot token positions and are unable to do so through the marketplace.
+    * @notice Turns on backup mode.
+    * @dev Only the contract owner can call this function.
+    * @dev Assumes that there's enough TGEN in this contract.
+    * @dev When backup mode is on, minting will be paused for synthetic bot tokens.
+    * @dev Users can withdraw their cost basis in TGEN from the escrow contract.
+    * @dev Backup mode will only be turned on if the majority of users want to exit their synthetic bot token positions and are unable to do so through the marketplace.
     * @param _totalCostBasis Total value of bot tokens (in USD) minted across all trading bots.
     */
     function turnOnBackupMode(uint256 _totalCostBasis) external override onlyOwner {
-        require(!useBackup, "BackupMode: already using backup mode.");
+        require(!useBackup, "BackupMode: Already using backup mode.");
 
         useBackup = true;
         startTime = block.timestamp;

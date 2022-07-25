@@ -2,23 +2,23 @@
 
 pragma solidity ^0.8.3;
 
-//OpenZeppelin
+//OpenZeppelin.
 import "../openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "../openzeppelin-solidity/contracts/SafeMath.sol";
 import "../openzeppelin-solidity/contracts/Ownable.sol";
 
-// Interfaces
+// Interfaces.
 import '../interfaces/IBackupMode.sol';
 import '../interfaces/ISyntheticBotToken.sol';
 
-//Inheritance
+//Inheritance.
 import '../interfaces/IBackupEscrow.sol';
 
 contract BackupEscrow is IBackupEscrow, Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IBackupMode public immutable backupMode;
+    IBackupMode public backupMode;
     IERC20 public immutable TGEN;
     address public factory;
 
@@ -29,15 +29,14 @@ contract BackupEscrow is IBackupEscrow, Ownable {
     mapping(address => bool) public registeredBotToken;
 
     // Contract holds available TGEN for all bot tokens.
-    constructor(address _backupMode, address _TGEN) Ownable() {
-        backupMode = IBackupMode(_backupMode);
+    constructor(address _TGEN) Ownable() {
         TGEN = IERC20(_TGEN);
     }
 
     /* ========== VIEWS ========== */
 
     /**
-    * @dev Returns the amount of TGEN available based on the cost basis.
+    * @notice Returns the amount of TGEN available based on the cost basis.
     */
     function availableTGEN(uint256 _costBasis) public view override returns (uint256) {
         return _costBasis.mul(1e18).div(backupMode.priceOfTGEN());
@@ -46,12 +45,12 @@ contract BackupEscrow is IBackupEscrow, Ownable {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Withdraws TGEN from escrow, based on the cost basis.
+    * @notice Withdraws TGEN from escrow, based on the cost basis.
     * @param _syntheticBotToken Address of the SyntheticBotToken contract.
     */
     function withdraw(address _syntheticBotToken) external override {
-        require(backupMode.useBackup(), "BackupEscrow: backup mode must be on.");
-        require(!hasWithdrawn[msg.sender][_syntheticBotToken], "BackupEscrow: user has already withdrawn for this synthetic bot token.");
+        require(backupMode.useBackup(), "BackupEscrow: Backup mode must be on.");
+        require(!hasWithdrawn[msg.sender][_syntheticBotToken], "BackupEscrow: User has already withdrawn for this synthetic bot token.");
 
         hasWithdrawn[msg.sender][_syntheticBotToken] = true;
 
@@ -66,20 +65,22 @@ contract BackupEscrow is IBackupEscrow, Ownable {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-    * @dev Sets the address of the SyntheticBotTokenFactory contract.
-    * @notice This function can only be called by the contract owner.
+    * @notice Sets the address of the SyntheticBotTokenFactory and BackupMode contracts.
+    * @dev This function can only be called by the contract owner.
     * @param _factory Address of the factory.
     */
-    function setFactory(address _factory) external onlyOwner {
-        require(factory == address(0), "BackupEscrow: already set factory.");
+    function initializeContracts(address _factory, address _backupMode) external onlyOwner {
+        require(factory == address(0), "BackupEscrow: Already set factory.");
+        require(address(backupMode) == address(0), "BackupEscrow: Already set backup mode.");
 
         factory = _factory;
+        backupMode = IBackupMode(_backupMode);
 
-        emit SetFactory(factory);
+        emit InitializedContracts(_factory, _backupMode);
     }
 
     /**
-    * @dev Registers the synthetic bot token, marking it eligible for withdrawals during backup mode.
+    * @notice Registers the synthetic bot token, marking it eligible for withdrawals during backup mode.
     * @param _syntheticBotToken Address of the SyntheticBotToken contract.
     */
     function registerBotToken(address _syntheticBotToken) external override onlyFactory {
@@ -91,7 +92,7 @@ contract BackupEscrow is IBackupEscrow, Ownable {
     /* ========== MODIFIERS ========== */
 
     modifier onlyFactory() {
-        require(msg.sender == factory, "BackupEscrow: only the SyntheticBotTokenFactory contract can call this function.");
+        require(msg.sender == factory, "BackupEscrow: Only the SyntheticBotTokenFactory contract can call this function.");
         _;
     }
 
@@ -99,5 +100,5 @@ contract BackupEscrow is IBackupEscrow, Ownable {
 
     event Withdraw(address user, address syntheticBotToken, uint256 amountOfTGEN);
     event RegisteredBotToken(address syntheticBotToken);
-    event SetFactory(address factory);
+    event InitializedContracts(address factory, address backupMode);
 }
