@@ -25,7 +25,7 @@ module.exports = {
     path: "./build/abi",
     flat: true,
   },
-  defaultNetwork: "hardhat",
+  defaultNetwork: "alfajores",
   gasReporter: {
     enabled: process.env.REPORT_GAS ? true : false,
     currency: "USD"
