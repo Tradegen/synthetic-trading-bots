@@ -3,7 +3,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_mcUSD",
+        "name": "_stablecoin",
         "type": "address"
       },
       {
@@ -14,11 +14,6 @@
       {
         "internalType": "address",
         "name": "_TGEN",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_feePool",
         "type": "address"
       },
       {
@@ -71,25 +66,6 @@
       }
     ],
     "name": "CreatedListing",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "previousOwner",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "OwnershipTransferred",
     "type": "event"
   },
   {
@@ -158,19 +134,6 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newDiscount",
-        "type": "uint256"
-      }
-    ],
-    "name": "UpdateMaximumOraclePriceDiscount",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "address",
         "name": "seller",
@@ -231,19 +194,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "feePool",
-    "outputs": [
-      {
-        "internalType": "contract IFeePool",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -282,32 +232,6 @@
         "internalType": "uint256",
         "name": "price",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "maxOraclePriceDiscount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "mcUSD",
-    "outputs": [
-      {
-        "internalType": "contract IERC20",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -406,10 +330,10 @@
   },
   {
     "inputs": [],
-    "name": "owner",
+    "name": "router",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "contract IRouter",
         "name": "",
         "type": "address"
       }
@@ -419,17 +343,10 @@
   },
   {
     "inputs": [],
-    "name": "renounceOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "router",
+    "name": "stablecoin",
     "outputs": [
       {
-        "internalType": "contract IRouter",
+        "internalType": "contract IERC20",
         "name": "",
         "type": "address"
       }
@@ -454,19 +371,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -545,49 +449,6 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_index",
-        "type": "uint256"
-      }
-    ],
-    "name": "calculateFairValue",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_index",
-        "type": "uint256"
-      }
-    ],
-    "name": "calculatePriceDifference",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
       },
       {
         "internalType": "uint256",
@@ -689,19 +550,6 @@
       }
     ],
     "name": "updateQuantity",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_newDiscount",
-        "type": "uint256"
-      }
-    ],
-    "name": "setMaximumOraclePriceDiscount",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

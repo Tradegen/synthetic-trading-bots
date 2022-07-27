@@ -3,7 +3,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_botPerformanceOracle",
+        "name": "_botPerformanceDataFeed",
         "type": "address"
       },
       {
@@ -13,17 +13,12 @@
       },
       {
         "internalType": "address",
-        "name": "_mcUSD",
+        "name": "_stablecoin",
         "type": "address"
       },
       {
         "internalType": "address",
         "name": "_TGEN",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_feePool",
         "type": "address"
       },
       {
@@ -34,6 +29,16 @@
       {
         "internalType": "address",
         "name": "_xTGEN",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_backupMode",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_backupEscrow",
         "type": "address"
       }
     ],
@@ -228,6 +233,32 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "backupEscrow",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "backupMode",
+    "outputs": [
+      {
+        "internalType": "contract IBackupMode",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -277,10 +308,10 @@
   },
   {
     "inputs": [],
-    "name": "feePool",
+    "name": "dataFeed",
     "outputs": [
       {
-        "internalType": "contract IFeePool",
+        "internalType": "contract IBotPerformanceDataFeed",
         "name": "",
         "type": "address"
       }
@@ -314,38 +345,12 @@
   },
   {
     "inputs": [],
-    "name": "mcUSD",
-    "outputs": [
-      {
-        "internalType": "contract IERC20",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "numberOfPositions",
     "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "oracle",
-    "outputs": [
-      {
-        "internalType": "contract IBotPerformanceOracle",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -451,6 +456,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "stablecoin",
+    "outputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes4",
@@ -471,12 +489,44 @@
   },
   {
     "inputs": [],
+    "name": "totalCostBasis",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "tradingBot",
     "outputs": [
       {
         "internalType": "contract ITradingBot",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "userCostBasis",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -514,19 +564,6 @@
         "internalType": "address",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getTokenPrice",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -722,6 +759,25 @@
     ],
     "name": "claimRewards",
     "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_user",
+        "type": "address"
+      }
+    ],
+    "name": "resetCostBasis",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
