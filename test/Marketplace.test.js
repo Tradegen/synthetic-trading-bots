@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("Marketplace", () => {
   let deployer;
   let otherUser;
@@ -11,10 +11,6 @@ describe("Marketplace", () => {
   let testTGENAddress;
   let TestTokenFactory;
 
-  let feePool;
-  let feePoolAddress;
-  let FeePoolFactory;
-
   let tradingBot;
   let tradingBotAddress;
   let TradingBotFactory;
@@ -23,13 +19,21 @@ describe("Marketplace", () => {
   let routerAddress;
   let RouterFactory;
 
-  let priceAggregatorRouter;
-  let priceAggregatorRouterAddress;
-  let PriceAggregatorRouterFactory;
+  let dataFeed;
+  let dataFeedAddress;
+  let DataFeedFactory;
 
-  let botPerformanceOracle;
-  let botPerformanceOracleAddress;
-  let BotPerformanceOracleFactory;
+  let backupMode;
+  let backupModeAddress;
+  let BackupModeFactory;
+
+  let backupEscrow;
+  let backupEscrowAddress;
+  let BackupEscrowFactory;
+
+  let ubeswapAdapter;
+  let ubeswapAdapterAddress;
+  let UbeswapAdapterFactory;
 
   let syntheticBotToken;
   let syntheticBotTokenAddress;
@@ -47,13 +51,14 @@ describe("Marketplace", () => {
     otherUser = signers[1];
 
     TestTokenFactory = await ethers.getContractFactory('TestTokenERC20');
-    FeePoolFactory = await ethers.getContractFactory('FeePool');
     RouterFactory = await ethers.getContractFactory('TestRouter');
-    BotPerformanceOracleFactory = await ethers.getContractFactory('BotPerformanceOracle');
+    UbeswapAdapterFactory = await ethers.getContractFactory('TestUbeswapAdapter');
+    DataFeedFactory = await ethers.getContractFactory('TestBotPerformanceDataFeed');
     SyntheticBotTokenFactory = await ethers.getContractFactory('TestSyntheticBotToken');
-    PriceAggregatorRouterFactory = await ethers.getContractFactory('PriceAggregatorRouter');
     TradingBotFactory = await ethers.getContractFactory('TestTradingBot');
     MarketplaceFactory = await ethers.getContractFactory('Marketplace');
+    BackupModeFactory = await ethers.getContractFactory('BackupMode');
+    BackupEscrowFactory = await ethers.getContractFactory('BackupEscrow');
 
     testToken = await TestTokenFactory.deploy("Test token", "TEST");
     await testToken.deployed();
@@ -63,11 +68,11 @@ describe("Marketplace", () => {
     await testTGEN.deployed();
     testTGENAddress = testTGEN.address;
 
-    priceAggregatorRouter = await PriceAggregatorRouterFactory.deploy();
-    await priceAggregatorRouter.deployed();
-    priceAggregatorRouterAddress = priceAggregatorRouter.address;
+    ubeswapAdapter = await UbeswapAdapterFactory.deploy();
+    await ubeswapAdapter.deployed();
+    ubeswapAdapterAddress = ubeswapAdapter.address;
 
-    tradingBot = await TradingBotFactory.deploy(1000, 1000);
+    tradingBot = await TradingBotFactory.deploy();
     await tradingBot.deployed();
     tradingBotAddress = tradingBot.address;
 
@@ -75,9 +80,17 @@ describe("Marketplace", () => {
     await router.deployed();
     routerAddress = router.address;
 
-    botPerformanceOracle = await BotPerformanceOracleFactory.deploy(priceAggregatorRouterAddress, otherUser.address);
-    await botPerformanceOracle.deployed();
-    botPerformanceOracleAddress = botPerformanceOracle.address;
+    dataFeed = await DataFeedFactory.deploy(testTGENAddress, parseEther("1"));
+    await dataFeed.deployed();
+    dataFeedAddress = dataFeed.address;
+
+    backupEscrow = await BackupEscrowFactory.deploy(testTGENAddress);
+    await backupEscrow.deployed();
+    backupEscrowAddress = backupEscrow.address;
+
+    backupMode = await BackupModeFactory.deploy(ubeswapAdapterAddress, testTGENAddress, backupEscrowAddress, otherUser.address);
+    await backupMode.deployed();
+    backupModeAddress = backupMode.address;
   });
 
   beforeEach(async () => {
@@ -85,26 +98,26 @@ describe("Marketplace", () => {
     deployer = signers[0];
     otherUser = signers[1];
 
-    feePool = await FeePoolFactory.deploy(testTokenAddress);
-    await feePool.deployed();
-    feePoolAddress = feePool.address;
-
-    syntheticBotToken = await SyntheticBotTokenFactory.deploy(botPerformanceOracleAddress, tradingBotAddress, testTokenAddress, feePoolAddress);
+    // Using BotPerformanceDataFeed address as xTGEN address for testing.
+    syntheticBotToken = await SyntheticBotTokenFactory.deploy(dataFeedAddress, tradingBotAddress, testTokenAddress, testTGENAddress, routerAddress, dataFeedAddress, backupModeAddress, backupEscrowAddress);
     await syntheticBotToken.deployed();
     syntheticBotTokenAddress = syntheticBotToken.address;
 
-    // Using BotPerformanceOracle address as xTGEN address for testing.
-    marketplace = await MarketplaceFactory.deploy(testTokenAddress, routerAddress, testTGENAddress, feePoolAddress, botPerformanceOracleAddress);
+    // Using BotPerformanceDataFeed address as xTGEN address for testing.
+    marketplace = await MarketplaceFactory.deploy(testTokenAddress, routerAddress, testTGENAddress, dataFeedAddress);
     await marketplace.deployed();
     marketplaceAddress = marketplace.address;
 
-    let tx = await testTGEN.transfer(routerAddress, parseEther("1000"));
+    let tx = await testTGEN.approve(syntheticBotTokenAddress, parseEther("5"));
     await tx.wait();
+
+    let tx1 = await testTGEN.transfer(routerAddress, parseEther("1000"));
+    await tx1.wait();
 
     let tx2 = await testToken.approve(syntheticBotTokenAddress, parseEther("11"));
     await tx2.wait();
 
-    let tx3 = await syntheticBotToken.mintTokens(parseEther("10"));
+    let tx3 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
     await tx3.wait();
   });
   
@@ -115,37 +128,6 @@ describe("Marketplace", () => {
 
         let tx2 = marketplace.connect(otherUser).createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
         await expect(tx2).to.be.reverted;
-
-        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
-        expect(numberOfMarketplaceListings).to.equal(0);
-
-        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
-        expect(index).to.equal(0);
-    });
-
-    it("below oracle price; no discount", async () => {
-        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
-        await tx.wait();
-
-        let tx2 = marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("0.95"), parseEther("1"));
-        await expect(tx2).to.be.reverted;
-
-        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
-        expect(numberOfMarketplaceListings).to.equal(0);
-
-        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
-        expect(index).to.equal(0);
-    });
-
-    it("below oracle price; discount", async () => {
-        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
-        await tx.wait();
-
-        let tx2 = await marketplace.setMaximumOraclePriceDiscount(1000);
-        await tx2.wait();
-
-        let tx3 = marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("0.8"), parseEther("1"));
-        await expect(tx3).to.be.reverted;
 
         let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
         expect(numberOfMarketplaceListings).to.equal(0);
@@ -256,14 +238,17 @@ describe("Marketplace", () => {
         let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
         await tx2.wait();
 
-        syntheticBotToken2 = await SyntheticBotTokenFactory.deploy(botPerformanceOracleAddress, tradingBotAddress, testTokenAddress, feePoolAddress);
+        syntheticBotToken2 = await SyntheticBotTokenFactory.deploy(dataFeedAddress, tradingBotAddress, testTokenAddress, testTGENAddress, routerAddress, dataFeedAddress, backupModeAddress, backupEscrowAddress);
         await syntheticBotToken2.deployed();
         syntheticBotTokenAddress2 = syntheticBotToken2.address;
+
+        let tx1 = await testTGEN.approve(syntheticBotTokenAddress2, parseEther("1"));
+        await tx1.wait();
 
         let tx3 = await testToken.approve(syntheticBotTokenAddress2, parseEther("11"));
         await tx3.wait();
 
-        let tx4 = await syntheticBotToken2.mintTokens(parseEther("10"));
+        let tx4 = await syntheticBotToken2.mintTokens(parseEther("10"), 52);
         await tx4.wait();
 
         let tx5 = await syntheticBotToken2.setApprovalForAll(marketplaceAddress, true);
@@ -308,7 +293,7 @@ describe("Marketplace", () => {
         let tx3 = await testToken.approve(syntheticBotTokenAddress, parseEther("11"));
         await tx3.wait();
 
-        let tx4 = await syntheticBotToken.mintTokens(parseEther("10"));
+        let tx4 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
         await tx4.wait();
 
         let tx5 = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
@@ -358,7 +343,7 @@ describe("Marketplace", () => {
         await tx3.wait();
 
         let newBalanceDeployer = await testToken.balanceOf(deployer.address);
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt(31392694063860);
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt(32026889903530);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
 
         // No time elapsed since last claim.
@@ -366,7 +351,7 @@ describe("Marketplace", () => {
         expect(earnedDeployer).to.equal(0);
 
         let userRewardPerTokenPaidDeployer = await syntheticBotToken.userRewardPerTokenPaid(deployer.address, 1);
-        expect(userRewardPerTokenPaidDeployer).to.equal(3139269406386);
+        expect(userRewardPerTokenPaidDeployer).to.equal(3202688990353);
 
         let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
         expect(numberOfMarketplaceListings).to.equal(1);
@@ -381,31 +366,6 @@ describe("Marketplace", () => {
         expect(listing[3]).to.equal(1);
         expect(listing[4]).to.equal(parseEther("1"));
         expect(listing[5]).to.equal(parseEther("2"));
-    });
-
-    it("above oracle price; discount", async () => {
-        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
-        await tx.wait();
-
-        let tx2 = await marketplace.setMaximumOraclePriceDiscount(1000);
-        await tx2.wait();
-
-        let tx3 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("0.95"), parseEther("1"));
-        await tx3.wait();
-
-        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
-        expect(numberOfMarketplaceListings).to.equal(1);
-
-        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
-        expect(index).to.equal(1);
-
-        let listing = await marketplace.getMarketplaceListing(1);
-        expect(listing[0]).to.equal(deployer.address);
-        expect(listing[1]).to.be.true;
-        expect(listing[2]).to.equal(syntheticBotTokenAddress);
-        expect(listing[3]).to.equal(1);
-        expect(listing[4]).to.equal(parseEther("1"));
-        expect(listing[5]).to.equal(parseEther(".95"));
     });
   });
   
@@ -470,7 +430,7 @@ describe("Marketplace", () => {
         let initialBalanceDeployer = await syntheticBotToken.balanceOf(deployer.address, 1);
         expect(initialBalanceDeployer).to.equal(0);
 
-        let initialBalanceStaking = await testTGEN.balanceOf(botPerformanceOracleAddress);
+        let initialBalanceStaking = await testTGEN.balanceOf(dataFeedAddress);
 
         // Simulate 100 seconds elapsed.
         let tx3 = await syntheticBotToken.setLastUpdateTime(1, Number(currentTime) - 97);
@@ -482,7 +442,7 @@ describe("Marketplace", () => {
         let newBalanceDeployer = await syntheticBotToken.balanceOf(deployer.address, 1);
         expect(newBalanceDeployer).to.equal(parseEther("10"));
 
-        let newBalanceStaking = await testTGEN.balanceOf(botPerformanceOracleAddress);
+        let newBalanceStaking = await testTGEN.balanceOf(dataFeedAddress);
         let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt(32026889903530);
         expect(newBalanceStaking.toString()).to.equal(expectedNewBalanceStaking.toString());
 
@@ -528,60 +488,7 @@ describe("Marketplace", () => {
         expect(listing[5]).to.equal(parseEther("2"));
     });
 
-    it("below oracle price; no discount", async () => {
-        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
-        await tx.wait();
-
-        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
-        await tx2.wait();
-
-        let tx3 = marketplace.updatePrice(1, parseEther("0.95"));
-        await expect(tx3).to.be.reverted;
-
-        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
-        expect(numberOfMarketplaceListings).to.equal(1);
-
-        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
-        expect(index).to.equal(1);
-
-        let listing = await marketplace.getMarketplaceListing(1);
-        expect(listing[0]).to.equal(deployer.address);
-        expect(listing[1]).to.be.true;
-        expect(listing[2]).to.equal(syntheticBotTokenAddress);
-        expect(listing[3]).to.equal(1);
-        expect(listing[4]).to.equal(parseEther("1"));
-        expect(listing[5]).to.equal(parseEther("2"));
-    });
-
-    it("below oracle price; discount", async () => {
-        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
-        await tx.wait();
-
-        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
-        await tx2.wait();
-
-        let tx3 = await marketplace.setMaximumOraclePriceDiscount(1000);
-        await tx3.wait();
-
-        let tx4 = marketplace.updatePrice(1, parseEther("0.8"));
-        await expect(tx4).to.be.reverted;
-
-        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
-        expect(numberOfMarketplaceListings).to.equal(1);
-
-        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
-        expect(index).to.equal(1);
-
-        let listing = await marketplace.getMarketplaceListing(1);
-        expect(listing[0]).to.equal(deployer.address);
-        expect(listing[1]).to.be.true;
-        expect(listing[2]).to.equal(syntheticBotTokenAddress);
-        expect(listing[3]).to.equal(1);
-        expect(listing[4]).to.equal(parseEther("1"));
-        expect(listing[5]).to.equal(parseEther("2"));
-    });
-
-    it("caller is seller and price is above oracle price", async () => {
+    it("meets requirements", async () => {
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
 
@@ -604,34 +511,6 @@ describe("Marketplace", () => {
         expect(listing[3]).to.equal(1);
         expect(listing[4]).to.equal(parseEther("1"));
         expect(listing[5]).to.equal(parseEther("3"));
-    });
-
-    it("above oracle price with discount", async () => {
-        let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
-        await tx.wait();
-
-        let tx2 = await marketplace.createListing(syntheticBotTokenAddress, 1, parseEther("2"), parseEther("1"));
-        await tx2.wait();
-
-        let tx3 = await marketplace.setMaximumOraclePriceDiscount(1000);
-        await tx3.wait();
-
-        let tx4 = await marketplace.updatePrice(1, parseEther("0.95"));
-        await tx4.wait();
-
-        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
-        expect(numberOfMarketplaceListings).to.equal(1);
-
-        let index = await marketplace.userToID(deployer.address, syntheticBotTokenAddress, 1);
-        expect(index).to.equal(1);
-
-        let listing = await marketplace.getMarketplaceListing(1);
-        expect(listing[0]).to.equal(deployer.address);
-        expect(listing[1]).to.be.true;
-        expect(listing[2]).to.equal(syntheticBotTokenAddress);
-        expect(listing[3]).to.equal(1);
-        expect(listing[4]).to.equal(parseEther("1"));
-        expect(listing[5]).to.equal(parseEther(".95"));
     });
   });
 
@@ -754,7 +633,6 @@ describe("Marketplace", () => {
     });
 
     it("partial amount and no existing position", async () => {
-        let initialBalanceFeePool = await testToken.balanceOf(feePoolAddress);
 
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
@@ -774,16 +652,10 @@ describe("Marketplace", () => {
         let tx5 = await marketplace.connect(otherUser).purchase(1, parseEther("1"));
         await tx5.wait();
 
-        let availableFees = await feePool.availableFees(deployer.address);
-        expect(availableFees).to.equal(parseEther("1.2"));
-
-        let newBalanceFeePool = await testToken.balanceOf(feePoolAddress);
         let newBalanceDeployer = await testToken.balanceOf(deployer.address);
         let newBalanceOther = await testToken.balanceOf(otherUser.address);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(2e17);
         let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt(2e18);
-        let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(22e17);
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
+        let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(20e17);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
         expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
 
@@ -803,7 +675,6 @@ describe("Marketplace", () => {
     });
 
     it("full amount and no existing position", async () => {
-        let initialBalanceFeePool = await testToken.balanceOf(feePoolAddress);
 
         let tx = await syntheticBotToken.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
@@ -823,9 +694,6 @@ describe("Marketplace", () => {
         let tx5 = await marketplace.connect(otherUser).purchase(1, parseEther("2"));
         await tx5.wait();
 
-        let availableFees = await feePool.availableFees(deployer.address);
-        expect(availableFees).to.equal(parseEther("1.4"));
-
         let botTokenBalanceOther = await syntheticBotToken.balanceOf(otherUser.address, 1);
         expect(botTokenBalanceOther).to.equal(parseEther("2"));
 
@@ -835,13 +703,10 @@ describe("Marketplace", () => {
         let earned = await syntheticBotToken.earned(otherUser.address, 1);
         expect(earned).to.equal(0);
 
-        let newBalanceFeePool = await testToken.balanceOf(feePoolAddress);
         let newBalanceDeployer = await testToken.balanceOf(deployer.address);
         let newBalanceOther = await testToken.balanceOf(otherUser.address);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(4e17);
         let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt(4e18);
-        let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(44e17);
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
+        let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(40e17);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
         expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
 
@@ -862,8 +727,6 @@ describe("Marketplace", () => {
 
     it("partial amount and existing position with rewards", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
-
-        let initialBalanceFeePool = await testToken.balanceOf(feePoolAddress);
 
         let tx = await syntheticBotToken.setApprovalForAll(otherUser.address, true);
         await tx.wait();
@@ -887,27 +750,21 @@ describe("Marketplace", () => {
         let tx7 = await testToken.connect(otherUser).approve(marketplaceAddress, parseEther("2.2"));
         await tx7.wait();
 
-        let initialBalanceStaking = await testToken.balanceOf(botPerformanceOracleAddress);
+        let initialBalanceStaking = await testToken.balanceOf(dataFeedAddress);
         let initialBalanceDeployer = await testToken.balanceOf(deployer.address);
         let initialBalanceOther = await testToken.balanceOf(otherUser.address);
 
         let tx8 = await marketplace.connect(otherUser).purchase(1, parseEther("1"));
         await tx8.wait();
 
-        let availableFees = await feePool.availableFees(deployer.address);
-        expect(availableFees).to.equal(parseEther("1.2"));
-
-        let newBalanceStaking = await testTGEN.balanceOf(botPerformanceOracleAddress);
+        let newBalanceStaking = await testTGEN.balanceOf(dataFeedAddress);
         let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt(39098173515893);
         expect(newBalanceStaking.toString()).to.equal(expectedNewBalanceStaking.toString());
 
-        let newBalanceFeePool = await testToken.balanceOf(feePoolAddress);
         let newBalanceDeployer = await testToken.balanceOf(deployer.address);
         let newBalanceOther = await testToken.balanceOf(otherUser.address);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(2e17);
         let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt(2e18);
         let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(22e17);
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
         expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
 
@@ -929,4 +786,4 @@ describe("Marketplace", () => {
         expect(listing[5]).to.equal(parseEther("2"));
     });
   });
-});*/
+});
