@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("SyntheticBotToken", () => {
   let deployer;
   let otherUser;
@@ -11,25 +11,29 @@ describe("SyntheticBotToken", () => {
   let TGENAddress;
   let TestTokenFactory;
 
-  let feePool;
-  let feePoolAddress;
-  let FeePoolFactory;
-
-  let botPerformanceOracle;
-  let botPerformanceOracleAddress;
-  let BotPerformanceOracleFactory;
+  let dataFeed;
+  let dataFeedAddress;
+  let DataFeedFactory;
 
   let tradingBot;
   let tradingBotAddress;
   let TradingBotFactory;
 
-  let priceAggregatorRouter;
-  let priceAggregatorRouterAddress;
-  let PriceAggregatorRouterFactory;
-
   let router;
   let routerAddress;
   let RouterFactory;
+
+  let backupMode;
+  let backupModeAddress;
+  let BackupModeFactory;
+
+  let backupEscrow;
+  let backupEscrowAddress;
+  let BackupEscrowFactory;
+
+  let ubeswapAdapter;
+  let ubeswapAdapterAddress;
+  let UbeswapAdapterFactory;
 
   let syntheticBotToken;
   let syntheticBotTokenAddress;
@@ -44,12 +48,13 @@ describe("SyntheticBotToken", () => {
     otherUser = signers[1];
 
     TestTokenFactory = await ethers.getContractFactory('TestTokenERC20');
-    FeePoolFactory = await ethers.getContractFactory('FeePool');
     RouterFactory = await ethers.getContractFactory('TestRouter');
-    PriceAggregatorRouterFactory = await ethers.getContractFactory('PriceAggregatorRouter');
-    BotPerformanceOracleFactory = await ethers.getContractFactory('TestBotPerformanceOracle');
+    UbeswapAdapterFactory = await ethers.getContractFactory('TestUbeswapAdapter');
+    DataFeedFactory = await ethers.getContractFactory('TestBotPerformanceDataFeed');
     TradingBotFactory = await ethers.getContractFactory('TestTradingBot');
     SyntheticBotTokenFactory = await ethers.getContractFactory('TestSyntheticBotToken');
+    BackupModeFactory = await ethers.getContractFactory('BackupMode');
+    BackupEscrowFactory = await ethers.getContractFactory('BackupEscrow');
 
     mcUSD = await TestTokenFactory.deploy("Test token", "mcUSD");
     await mcUSD.deployed();
@@ -59,15 +64,11 @@ describe("SyntheticBotToken", () => {
     await TGEN.deployed();
     TGENAddress = TGEN.address;
 
-    feePool = await FeePoolFactory.deploy(mcUSDAddress);
-    await feePool.deployed();
-    feePoolAddress = feePool.address;
+    ubeswapAdapter = await UbeswapAdapterFactory.deploy();
+    await ubeswapAdapter.deployed();
+    ubeswapAdapterAddress = ubeswapAdapter.address;
 
-    priceAggregatorRouter = await PriceAggregatorRouterFactory.deploy();
-    await priceAggregatorRouter.deployed();
-    priceAggregatorRouterAddress = priceAggregatorRouter.address;
-
-    tradingBot = await TradingBotFactory.deploy(1000, 1000);
+    tradingBot = await TradingBotFactory.deploy();
     await tradingBot.deployed();
     tradingBotAddress = tradingBot.address;
 
@@ -75,9 +76,17 @@ describe("SyntheticBotToken", () => {
     await router.deployed();
     routerAddress = router.address;
 
-    botPerformanceOracle = await BotPerformanceOracleFactory.deploy(priceAggregatorRouterAddress, deployer.address);
-    await botPerformanceOracle.deployed();
-    botPerformanceOracleAddress = botPerformanceOracle.address;
+    dataFeed = await DataFeedFactory.deploy(TGENAddress, parseEther("1"));
+    await dataFeed.deployed();
+    dataFeedAddress = dataFeed.address;
+
+    backupEscrow = await BackupEscrowFactory.deploy(TGENAddress);
+    await backupEscrow.deployed();
+    backupEscrowAddress = backupEscrow.address;
+
+    backupMode = await BackupModeFactory.deploy(ubeswapAdapterAddress, TGENAddress, backupEscrowAddress, otherUser.address);
+    await backupMode.deployed();
+    backupModeAddress = backupMode.address;
   });
 
   beforeEach(async () => {
@@ -85,8 +94,8 @@ describe("SyntheticBotToken", () => {
     deployer = signers[0];
     otherUser = signers[1];
 
-    // Using botPerformanceOracleAddress as xTGEN.
-    syntheticBotToken = await SyntheticBotTokenFactory.deploy(botPerformanceOracleAddress, tradingBotAddress, mcUSDAddress, TGENAddress, feePoolAddress, routerAddress, botPerformanceOracleAddress);
+    // Using dataFeedAddress as xTGEN.
+    syntheticBotToken = await SyntheticBotTokenFactory.deploy(dataFeedAddress, tradingBotAddress, mcUSDAddress, TGENAddress, routerAddress, dataFeedAddress, backupModeAddress, backupEscrowAddress);
     await syntheticBotToken.deployed();
     syntheticBotTokenAddress = syntheticBotToken.address;
 
@@ -176,24 +185,23 @@ describe("SyntheticBotToken", () => {
     it("no existing positions; max duration", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
-        let initialBalanceStaking = await TGEN.balanceOf(botPerformanceOracleAddress);
+        let initialBalanceStaking = await TGEN.balanceOf(dataFeedAddress);
 
-        let tx = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("1"));
         await tx.wait();
 
-        let tx2 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
+        let tx2 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
         await tx2.wait();
 
+        let tx3 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
+        await tx3.wait();
+
         let newBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
-        let newBalanceStaking = await TGEN.balanceOf(botPerformanceOracleAddress);
+        let newBalanceStaking = await TGEN.balanceOf(dataFeedAddress);
         let balanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
 
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(11e18);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(1e18);
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(10e18);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(balanceToken).to.equal(parseEther("10"));
         expect(newBalanceStaking).to.equal(initialBalanceStaking);
 
@@ -221,9 +229,9 @@ describe("SyntheticBotToken", () => {
 
         let positionInfo = await syntheticBotToken.getPosition(1);
         expect(positionInfo[0]).to.equal(parseEther("10"));
-        expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
-        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 2);
-        expect(positionInfo[3]).to.equal(Number(currentTime) + 2);
+        expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
+        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 3);
+        expect(positionInfo[3]).to.equal(Number(currentTime) + 3);
         expect(positionInfo[4]).to.equal(0);
         expect(positionInfo[5]).to.equal(317969067969);             
     });
@@ -231,25 +239,24 @@ describe("SyntheticBotToken", () => {
     it("no existing positions; min duration", async () => {
       let currentTime = await syntheticBotToken.getCurrentTime();
       let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-      let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
-      let initialBalanceStaking = await TGEN.balanceOf(botPerformanceOracleAddress);
+      let initialBalanceStaking = await TGEN.balanceOf(dataFeedAddress);
 
-      let tx = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
-      await tx.wait();
+      let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("1"));
+        await tx.wait();
 
-      let tx2 = await syntheticBotToken.mintTokens(parseEther("10"), 4);
+      let tx2 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
       await tx2.wait();
 
+      let tx3 = await syntheticBotToken.mintTokens(parseEther("10"), 4);
+      await tx3.wait();
+
       let newBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-      let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
-      let newBalanceStaking = await TGEN.balanceOf(botPerformanceOracleAddress);
+      let newBalanceStaking = await TGEN.balanceOf(dataFeedAddress);
       let balanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
 
-      let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(11e18);
-      let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(1e18);
+      let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(10e18);
       let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt(2e18);
       expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-      expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
       expect(balanceToken).to.equal(parseEther("8"));
       expect(newBalanceStaking.toString()).to.equal(expectedNewBalanceStaking.toString());
 
@@ -277,9 +284,9 @@ describe("SyntheticBotToken", () => {
 
       let positionInfo = await syntheticBotToken.getPosition(1);
       expect(positionInfo[0]).to.equal(parseEther("10"));
-      expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
-      expect(positionInfo[2]).to.equal(Number(currentTime) + (ONE_WEEK * 4) + 2);
-      expect(positionInfo[3]).to.equal(Number(currentTime) + 2);
+      expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
+      expect(positionInfo[2]).to.equal(Number(currentTime) + (ONE_WEEK * 4) + 3);
+      expect(positionInfo[3]).to.equal(Number(currentTime) + 3);
       expect(positionInfo[4]).to.equal(0);
       expect(positionInfo[5]).to.equal(3306878306878);         
     });
@@ -287,28 +294,27 @@ describe("SyntheticBotToken", () => {
     it("existing positions", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
 
-        let tx = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("2"));
         await tx.wait();
 
-        let tx2 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
+        let tx2 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
         await tx2.wait();
 
-        let tx3 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        let tx3 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
         await tx3.wait();
 
-        let tx4 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
+        let tx4 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
         await tx4.wait();
 
+        let tx5 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
+        await tx5.wait();
+
         let newBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let balanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
 
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(22e18);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(2e18);
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(20e18);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(balanceToken).to.equal(parseEther("20"));
 
         let balanceOf = await syntheticBotToken.balanceOf(deployer.address, 2);
@@ -343,9 +349,9 @@ describe("SyntheticBotToken", () => {
 
         let positionInfo = await syntheticBotToken.getPosition(1);
         expect(positionInfo[0]).to.equal(parseEther("10"));
-        expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
-        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 2);
-        expect(positionInfo[3]).to.equal(Number(currentTime) + 2);
+        expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
+        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 3);
+        expect(positionInfo[3]).to.equal(Number(currentTime) + 3);
         expect(positionInfo[4]).to.equal(0);
         expect(positionInfo[5]).to.equal(317969067969);
     });
@@ -355,32 +361,31 @@ describe("SyntheticBotToken", () => {
     it("one investor; 100 seconds elapsed", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
 
-        let tx = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("1"));
         await tx.wait();
 
-        let tx2 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
+        let tx2 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
         await tx2.wait();
 
-        // Simulate 100 seconds elapsed.
-        let tx3 = await syntheticBotToken.setLastUpdateTime(1, Number(currentTime) - 96);
+        let tx3 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
         await tx3.wait();
+
+        // Simulate 100 seconds elapsed.
+        let tx4 = await syntheticBotToken.setLastUpdateTime(1, Number(currentTime) - 96);
+        await tx4.wait();
 
         let initialBalanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
 
-        let tx4 = await syntheticBotToken.claimRewards(1);
-        await tx4.wait();
+        let tx5 = await syntheticBotToken.claimRewards(1);
+        await tx5.wait();
 
         let newBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let newBalanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
 
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(11e18) + BigInt(31796906796900);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(1e18);
-        let expectedNewBalanceToken = BigInt(initialBalanceToken) - BigInt(31796906796900)
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(10e18) + BigInt(32114875864860);
+        let expectedNewBalanceToken = BigInt(initialBalanceToken) - BigInt(32114875864860)
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(newBalanceToken.toString()).to.equal(expectedNewBalanceToken.toString());
 
         let balanceOf = await syntheticBotToken.balanceOf(deployer.address, 1);
@@ -392,7 +397,7 @@ describe("SyntheticBotToken", () => {
 
         // No time elapsed since last claim.
         let rewardPerToken = await syntheticBotToken.rewardPerToken(1);
-        expect(rewardPerToken).to.equal(3179690679690);
+        expect(rewardPerToken).to.equal(3211487586486);
 
         // No time elapsed.
         let remainingRewardsForUser = await syntheticBotToken.remainingRewardsForUser(deployer.address, 1);
@@ -400,53 +405,52 @@ describe("SyntheticBotToken", () => {
         expect(remainingRewardsForUser).to.be.lt(parseEther("10.00000001"));
 
         let userRewardPerTokenPaid = await syntheticBotToken.userRewardPerTokenPaid(deployer.address, 1);
-        expect(userRewardPerTokenPaid).to.equal(3179690679690);
+        expect(userRewardPerTokenPaid).to.equal(3211487586486);
 
         let numberOfPositions = await syntheticBotToken.numberOfPositions();
         expect(numberOfPositions).to.equal(1);
 
         let positionInfo = await syntheticBotToken.getPosition(1);
         expect(positionInfo[0]).to.equal(parseEther("10"));
-        expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
-        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 2);
-        expect(positionInfo[3]).to.equal(Number(currentTime) + 4);
-        expect(positionInfo[4]).to.equal(3179690679690);
+        expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
+        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 3);
+        expect(positionInfo[3]).to.equal(Number(currentTime) + 5);
+        expect(positionInfo[4]).to.equal(3211487586486);
         expect(positionInfo[5]).to.equal(317969067969);
     });
 
     it("one investor; (duration + 1) seconds elapsed", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
 
-        let tx = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("1"));
         await tx.wait();
 
-        let tx2 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
+        let tx2 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
         await tx2.wait();
 
-        // Simulate 100 seconds elapsed.
-        let tx3 = await syntheticBotToken.setRewardsEndOn(1, Number(currentTime) + 1);
+        let tx3 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
         await tx3.wait();
 
-        let tx4 = await syntheticBotToken.setLastUpdateTime(1, Number(currentTime) + 1 - DURATION);
+        // Simulate 100 seconds elapsed.
+        let tx4 = await syntheticBotToken.setRewardsEndOn(1, Number(currentTime) + 1);
         await tx4.wait();
+
+        let tx5 = await syntheticBotToken.setLastUpdateTime(1, Number(currentTime) + 1 - DURATION);
+        await tx5.wait();
 
         let initialBalanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
         let earned2 = await syntheticBotToken.earned(deployer.address, 1);
 
-        let tx5 = await syntheticBotToken.claimRewards(1);
-        await tx5.wait();
+        let tx6 = await syntheticBotToken.claimRewards(1);
+        await tx6.wait();
 
         let newBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let newBalanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
 
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(11e18) + BigInt(earned2);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(1e18);
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(10e18) + BigInt(earned2);
         let expectedNewBalanceToken = BigInt(initialBalanceToken) - BigInt(earned2);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(newBalanceToken.toString()).to.equal(expectedNewBalanceToken.toString());
 
         let balanceOf = await syntheticBotToken.balanceOf(deployer.address, 1);
@@ -472,7 +476,7 @@ describe("SyntheticBotToken", () => {
 
         let positionInfo = await syntheticBotToken.getPosition(1);
         expect(positionInfo[0]).to.equal(parseEther("10"));
-        expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
+        expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
         expect(positionInfo[2]).to.equal(Number(currentTime) + 1);
         expect(positionInfo[3]).to.equal(Number(currentTime) + 1);
         expect(positionInfo[4]).to.equal(rewardPerToken);
@@ -481,10 +485,12 @@ describe("SyntheticBotToken", () => {
 
     it("multiple investors; 100 seconds elapsed", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
-        let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
 
         //let tx = await mcUSD.transfer(otherUser.address, parseEther("10"));
         //await tx.wait();
+
+        let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("1"));
+        await tx.wait();
 
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
 
@@ -524,16 +530,13 @@ describe("SyntheticBotToken", () => {
         let expectedEarned2 = BigInt(rewardPerToken2) * BigInt(10);
         console.log(expectedEarned2);
         
-        let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let newBalanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
         let newBalanceOther = await mcUSD.balanceOf(otherUser.address);
 
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(11e18) + BigInt(expectedEarned1);
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(10e18) + BigInt(expectedEarned1);
         let expectedNewBalanceOther = BigInt(initialBalanceOther) + BigInt(expectedEarned2);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(1e18);
         let expectedNewBalanceToken = BigInt(initialBalanceToken) - BigInt(expectedEarned1) - BigInt(expectedEarned2);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(newBalanceToken.toString()).to.equal(expectedNewBalanceToken.toString());
         expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
 
@@ -553,7 +556,7 @@ describe("SyntheticBotToken", () => {
 
         // No time elapsed since last claim.
         let rewardPerToken = await syntheticBotToken.rewardPerToken(1);
-        expect(rewardPerToken).to.equal(1605743793243);
+        expect(rewardPerToken).to.equal(1621642246641);
 
         // No time elapsed.
         let remainingRewardsForUser = await syntheticBotToken.remainingRewardsForUser(deployer.address, 1);
@@ -561,20 +564,20 @@ describe("SyntheticBotToken", () => {
         expect(remainingRewardsForUser).to.be.lt(parseEther("5.00000001"));
 
         let userRewardPerTokenPaidDeployer = await syntheticBotToken.userRewardPerTokenPaid(deployer.address, 1);
-        expect(userRewardPerTokenPaidDeployer).to.equal(1589845339845);
+        expect(userRewardPerTokenPaidDeployer).to.equal(1605743793243);
 
         let userRewardPerTokenPaidOther = await syntheticBotToken.userRewardPerTokenPaid(otherUser.address, 1);
-        expect(userRewardPerTokenPaidOther).to.equal(1605743793243);
+        expect(userRewardPerTokenPaidOther).to.equal(1621642246641);
 
         let numberOfPositions = await syntheticBotToken.numberOfPositions();
         expect(numberOfPositions).to.equal(1);
 
         let positionInfo = await syntheticBotToken.getPosition(1);
         expect(positionInfo[0]).to.equal(parseEther("20"));
-        expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
-        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 2);
-        expect(positionInfo[3]).to.equal(Number(currentTime) + 7);
-        expect(positionInfo[4]).to.equal(1605743793243);
+        expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
+        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 3);
+        expect(positionInfo[3]).to.equal(Number(currentTime) + 8);
+        expect(positionInfo[4]).to.equal(1621642246641);
         expect(positionInfo[5]).to.equal(317969067969);
     });
   });
@@ -583,11 +586,13 @@ describe("SyntheticBotToken", () => {
     it("no rewards available for recipient", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let initialBalanceOther = await mcUSD.balanceOf(otherUser.address);
 
-        let tx = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("1"));
         await tx.wait();
+
+        let tx1 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        await tx1.wait();
 
         let tx2 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
         await tx2.wait();
@@ -605,15 +610,12 @@ describe("SyntheticBotToken", () => {
         await tx5.wait();
 
         let newBalanceDeployer = await mcUSD.balanceOf(deployer.address);
-        let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let newBalanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
         let newBalanceOther = await mcUSD.balanceOf(otherUser.address);
 
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(11e18) + BigInt(32114875864860);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(1e18);
-        let expectedNewBalanceToken = BigInt(initialBalanceToken) - BigInt(32114875864860)
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(10e18) + BigInt(32114875864860 + 317969067970);
+        let expectedNewBalanceToken = BigInt(initialBalanceToken) - BigInt(32114875864860 + 317969067970)
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(newBalanceToken.toString()).to.equal(expectedNewBalanceToken.toString());
         expect(newBalanceOther).to.equal(initialBalanceOther);
 
@@ -633,7 +635,7 @@ describe("SyntheticBotToken", () => {
 
         // No time elapsed since last claim.
         let rewardPerToken = await syntheticBotToken.rewardPerToken(1);
-        expect(rewardPerToken).to.equal(3211487586486);
+        expect(rewardPerToken).to.equal(3243284493283);
 
         // No time elapsed.
         let remainingRewardsForUserDeployer = await syntheticBotToken.remainingRewardsForUser(deployer.address, 1);
@@ -646,30 +648,32 @@ describe("SyntheticBotToken", () => {
         expect(remainingRewardsForUserOther).to.be.lt(parseEther("5.00000001"));
 
         let userRewardPerTokenPaidDeployer = await syntheticBotToken.userRewardPerTokenPaid(deployer.address, 1);
-        expect(userRewardPerTokenPaidDeployer).to.equal(3211487586486);
+        expect(userRewardPerTokenPaidDeployer).to.equal(3243284493283);
 
         let userRewardPerTokenPaidOther = await syntheticBotToken.userRewardPerTokenPaid(otherUser.address, 1);
-        expect(userRewardPerTokenPaidOther).to.equal(3211487586486);
+        expect(userRewardPerTokenPaidOther).to.equal(3243284493283);
 
         let numberOfPositions = await syntheticBotToken.numberOfPositions();
         expect(numberOfPositions).to.equal(1);
 
         let positionInfo = await syntheticBotToken.getPosition(1);
         expect(positionInfo[0]).to.equal(parseEther("10"));
-        expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
-        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 2);
-        expect(positionInfo[3]).to.equal(Number(currentTime) + 5);
-        expect(positionInfo[4]).to.equal(3211487586486);
+        expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
+        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 3);
+        expect(positionInfo[3]).to.equal(Number(currentTime) + 6);
+        expect(positionInfo[4]).to.equal(3243284493283);
         expect(positionInfo[5]).to.equal(317969067969);
     });
 
     it("rewards available for recipient", async () => {
         let currentTime = await syntheticBotToken.getCurrentTime();
-        let initialBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let initialBalanceDeployer = await mcUSD.balanceOf(deployer.address);
 
-        let tx = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        let tx = await TGEN.approve(syntheticBotTokenAddress, parseEther("1"));
         await tx.wait();
+
+        let tx1 = await mcUSD.approve(syntheticBotTokenAddress, parseEther("11"));
+        await tx1.wait();
 
         let tx2 = await syntheticBotToken.mintTokens(parseEther("10"), 52);
         await tx2.wait();
@@ -704,15 +708,12 @@ describe("SyntheticBotToken", () => {
         let expectedEarned2 = BigInt(rewardPerToken2) * BigInt(10);
         console.log(expectedEarned2);
         
-        let newBalanceFeePool = await mcUSD.balanceOf(feePoolAddress);
         let newBalanceToken = await mcUSD.balanceOf(syntheticBotTokenAddress);
         let newBalanceOther = await mcUSD.balanceOf(otherUser.address);
 
-        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(11e18) + BigInt(expectedEarned1);
-        let expectedNewBalanceFeePool = BigInt(initialBalanceFeePool) + BigInt(1e18);
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) - BigInt(10e18) + BigInt(expectedEarned1);
         let expectedNewBalanceToken = BigInt(initialBalanceToken) - BigInt(expectedEarned1);
         expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
-        expect(newBalanceFeePool.toString()).to.equal(expectedNewBalanceFeePool.toString());
         expect(newBalanceOther).to.equal(initialBalanceOther);
         expect(newBalanceToken.toString()).to.equal(expectedNewBalanceToken.toString());
 
@@ -728,11 +729,11 @@ describe("SyntheticBotToken", () => {
 
         // No time elapsed since last claim.
         let earnedOther = await syntheticBotToken.earned(otherUser.address, 1);
-        expect(earnedOther).to.equal(16057437932430);
+        expect(earnedOther).to.equal(16216422466410);
 
         // No time elapsed since last claim.
         let rewardPerToken = await syntheticBotToken.rewardPerToken(1);
-        expect(rewardPerToken).to.equal(1605743793243);
+        expect(rewardPerToken).to.equal(1621642246641);
 
         // No time elapsed.
         let remainingRewardsForUserDeployer = await syntheticBotToken.remainingRewardsForUser(deployer.address, 1);
@@ -745,21 +746,21 @@ describe("SyntheticBotToken", () => {
         expect(remainingRewardsForUserOther).to.be.lt(parseEther("7.500000001"));
 
         let userRewardPerTokenPaidDeployer = await syntheticBotToken.userRewardPerTokenPaid(deployer.address, 1);
-        expect(userRewardPerTokenPaidDeployer).to.equal(1605743793243);
+        expect(userRewardPerTokenPaidDeployer).to.equal(1621642246641);
 
         let userRewardPerTokenPaidOther = await syntheticBotToken.userRewardPerTokenPaid(otherUser.address, 1);
-        expect(userRewardPerTokenPaidOther).to.equal(1605743793243);
+        expect(userRewardPerTokenPaidOther).to.equal(1621642246641);
 
         let numberOfPositions = await syntheticBotToken.numberOfPositions();
         expect(numberOfPositions).to.equal(1);
 
         let positionInfo = await syntheticBotToken.getPosition(1);
         expect(positionInfo[0]).to.equal(parseEther("20"));
-        expect(positionInfo[1]).to.equal(Number(currentTime) + 2);
-        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 2);
-        expect(positionInfo[3]).to.equal(Number(currentTime) + 7);
-        expect(positionInfo[4]).to.equal(1605743793243);
+        expect(positionInfo[1]).to.equal(Number(currentTime) + 3);
+        expect(positionInfo[2]).to.equal(Number(currentTime) + DURATION + 3);
+        expect(positionInfo[3]).to.equal(Number(currentTime) + 8);
+        expect(positionInfo[4]).to.equal(1621642246641);
         expect(positionInfo[5]).to.equal(317969067969);
     });
   });
-});*/
+});

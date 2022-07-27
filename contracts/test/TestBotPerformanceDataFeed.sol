@@ -90,7 +90,7 @@ contract TestBotPerformanceDataFeed is IBotPerformanceDataFeed {
      * @return (uint256) Price of the trading bot's token, in USD.
      */
     function getTokenPrice() external override returns (uint256) {
-        return 2e18;
+        return 1e18;
     }
 
     /**
@@ -108,6 +108,6 @@ contract TestBotPerformanceDataFeed is IBotPerformanceDataFeed {
     * @param _newOperator Address of the new operator.
     */
     function setOperator(address _newOperator) external override {
-        
+
     }
 }
