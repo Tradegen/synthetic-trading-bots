@@ -9,7 +9,6 @@ import "./openzeppelin-solidity/contracts/ERC1155/IERC1155.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
 
 // Interfaces.
-import './interfaces/ITradingBot.sol';
 import './interfaces/ISyntheticBotToken.sol';
 import './interfaces/IRouter.sol';
 
@@ -96,7 +95,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     * @param _numberOfTokens Number of tokens to sell.
     */
     function createListing(address _botToken, uint256 _ID, uint256 _price, uint256 _numberOfTokens) external override {
-        require(_botToken != address(0), "Marketplace: Invalid adderss for synthetic bot token.");
+        require(_botToken != address(0), "Marketplace: Invalid address for synthetic bot token.");
         require(userToID[msg.sender][_botToken][_ID] == 0, "Marketplace: Already have a marketplace listing for this NFT.");
         require(_price > 0, "Marketplace: Price must be greater than 0");
         require(_numberOfTokens > 0, "Marketplace: Number of tokens must be greater than 0");

@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("SyntheticBotToken", () => {
   let deployer;
   let otherUser;
@@ -763,4 +763,4 @@ describe("SyntheticBotToken", () => {
         expect(positionInfo[5]).to.equal(317969067969);
     });
   });
-});*/
+});

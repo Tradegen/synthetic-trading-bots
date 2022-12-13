@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("BackupMode", () => {
   let deployer;
   let otherUser;
@@ -79,4 +79,4 @@ describe("BackupMode", () => {
         await expect(tx2).to.be.reverted;
     });
   });
-});*/
+});

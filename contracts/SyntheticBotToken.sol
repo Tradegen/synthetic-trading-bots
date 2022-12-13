@@ -9,7 +9,6 @@ import "./openzeppelin-solidity/contracts/ERC1155/ERC1155.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
 // Interfaces
-import "./interfaces/ITradingBot.sol";
 import "./interfaces/IBotPerformanceDataFeed.sol";
 import './interfaces/IRouter.sol';
 import './interfaces/IBackupMode.sol';
@@ -39,11 +38,11 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
     IBotPerformanceDataFeed public immutable dataFeed;
     IERC20 public immutable stablecoin;
     IERC20 public immutable TGEN;
-    ITradingBot public immutable tradingBot;
     IRouter public immutable router;
     IBackupMode public immutable backupMode;
     address public immutable backupEscrow;
     address public immutable xTGEN;
+    address public immutable tradingBot;
 
     // Keep track of highest NFT ID.
     uint256 public numberOfPositions;
@@ -64,7 +63,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     constructor(address _botPerformanceDataFeed, address _tradingBot, address _stablecoin, address _TGEN, address _router, address _xTGEN, address _backupMode, address _backupEscrow) {
         dataFeed = IBotPerformanceDataFeed(_botPerformanceDataFeed);
-        tradingBot = ITradingBot(_tradingBot);
+        tradingBot = _tradingBot;
         stablecoin = IERC20(_stablecoin);
         TGEN = IERC20(_TGEN);
         router = IRouter(_router);
@@ -79,7 +78,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
      * @notice Returns the address of the trading bot associated with this token.
      */
     function getTradingBot() external view override returns (address) {
-        return address(tradingBot);
+        return tradingBot;
     }
 
     /**
@@ -153,7 +152,7 @@ contract SyntheticBotToken is ISyntheticBotToken, ERC1155, ReentrancyGuard {
 
     /**
      * @notice Mints synthetic bot tokens.
-     * @dev Need to approve (botTokenPrice * numberOfTokens * (mintFee + 10000) / 10000) worth of stablecoin before calling this function.
+     * @dev Need to approve (botTokenPrice * numberOfTokens) worth of stablecoin before calling this function.
      * @param _numberOfTokens Number of synthetic bot tokens to mint.
      * @param _duration Number of weeks before rewards end.
      */

@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("SyntheticBotTokenFactory", () => {
   let deployer;
   let otherUser;
@@ -105,4 +105,4 @@ describe("SyntheticBotTokenFactory", () => {
         expect(temp).to.emit("CreatedContract");
     });
   });
-});*/
+});
