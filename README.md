@@ -8,7 +8,11 @@ This repo shows an example of how bot performance data could be used in a protoc
 
 ## Purpose
 
-Provide an example implementation of a protocol integrating Tradegen's data feeds.
+Provide an example of a protocol that integrates Tradegen's data feeds.
+
+## Overview
+
+Synthetic trading bots tokenize the performance of trading bots in simulated trades. These tokens mimic the performance of their respective trading bots, giving users exposure to the trading bots without having to run the bots themselves. 
 
 ## Disclaimer
 
