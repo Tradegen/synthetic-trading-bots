@@ -18,6 +18,8 @@ This protocol is experimental. Developers looking to integrate bot performance d
 
 At a high level, the system consists of trading bots, data feeds, and a synthetic asset protocol. Each component of the system is implemented as a set of smart contracts deployed on the Celo blockchain.
 
+Trading bots make simulated trades on major cryptos and relay the trade data to data feeds. Each bot consists of a set of entry/exit rules defined by the bot's creator. Keepers (scripts running on the cloud) call the trading bot's contracts at regular intervals to update the bot's state with the latest price data, according to the bot's entry/exit rules. If the entry/exit rules are met, a simulated trade is sent to the bot's data feed.
+
 ## Repository Structure
 
 ```
