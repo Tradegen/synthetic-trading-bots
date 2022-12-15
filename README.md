@@ -20,6 +20,8 @@ At a high level, the system consists of trading bots, data feeds, and a syntheti
 
 Trading bots make simulated trades on major cryptos and relay the trade data to data feeds. Each bot consists of a set of entry/exit rules defined by the bot's creator. Keepers (scripts running on the cloud) call the trading bot's contracts at regular intervals to update the bot's state with the latest price data, according to the bot's entry/exit rules. If the entry/exit rules are met, a simulated trade is sent to the bot's data feed.
 
+Data feeds store the order history of each trading bot and use it to calculate the price of a bot's performance. The price of each bot starts at $1 and fluctuates based on the bot's lifetime performance. For instance, a +50% lifetime performance will lead to a price of $1.50 and a -30% lifetime performance will lead to a price of $0.70. Developers wanting to use a bot's price data in their applications can pay a 'data request' fee to the bot's data feed to get the latest price. The bot's creator collects the 'data request' fees from their bot, allowing them to monetize their bot without risking their own capital.
+
 ## Repository Structure
 
 ```
