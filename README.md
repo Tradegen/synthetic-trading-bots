@@ -44,7 +44,11 @@ This protocol includes a backup mode, which pauses the minting of new bot tokens
 
 ## Documentation
 
-Docs are available at https://docs.tradegen.io
+To learn more about the Tradegen project, visit the docs at https://docs.tradegen.io.
+
+Source code for trading bots: https://github.com/Tradegen/algo-trading.
+
+Source code for data feeds: https://github.com/Tradegen/data-feeds.
 
 ## License
 
