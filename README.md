@@ -1,24 +1,22 @@
 # Synthetic Trading Bots
 
-Synthetic trading bots tokenize the performance of trading algos in simulated trades. This enables high-frequency trading on-chain with zero exchange fees and slippage.
-
-Trades are simulated on our own blockchain in response to price updates from Band Protocol oracles. Simulated orders are passed to the BotPerformanceOracle contract through a dedicated keeper node. A decentralized keeper network is used for relaying bot performance data from Tradegen's blockchain to EVM-compatible blockchains at regular intervals. The logic for updating bots can be found at https://github.com/Tradegen/algo-trading
-
-This repo shows an example of how bot performance data could be used in a protocol. In this protocol, bot token positions are NFTs that gradually vest deposited collateral. These NFTs are tradable on the platform's marketplace or external marketplaces supporting the ERC1155 standard.
-
 ## Purpose
 
 Provide an example of a protocol that integrates Tradegen's data feeds.
 
 ## Overview
 
-Synthetic trading bots tokenize the performance of trading bots in simulated trades. These tokens mimic the performance of their respective trading bots, giving users exposure to the trading bots without having to run the bots themselves. 
+Synthetic trading bots tokenize the performance of trading bots in simulated trades. These tokens mimic the performance of their respective trading bots, giving users exposure to the trading bots without having to run the bots themselves.
 
 ## Disclaimer
 
 The code has not been audited yet.
 
 This protocol is experimental. Developers looking to integrate bot performance data are advised to use existing synthetic asset protocols but replace their oracle with the BotPerformanceOracle.
+
+## System Design
+
+At a high level, the system consists of trading bots, data feeds, and a synthetic asset protocol. Each component of the system is implemented as a set of smart contracts deployed on the Celo blockchain.
 
 ## Repository Structure
 
