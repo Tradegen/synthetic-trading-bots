@@ -22,6 +22,8 @@ Trading bots make simulated trades on major cryptos and relay the trade data to 
 
 Data feeds store the order history of each trading bot and use it to calculate the price of a bot's performance. The price of each bot starts at $1 and fluctuates based on the bot's lifetime performance. For instance, a +50% lifetime performance will lead to a price of $1.50 and a -30% lifetime performance will lead to a price of $0.70. Developers wanting to use a bot's price data in their applications can pay a 'data request' fee to the bot's data feed to get the latest price. The bot's creator collects the 'data request' fees from their bot, allowing them to monetize their bot without risking their own capital.
 
+The synthetic asset protocol uses a bot's data feed to create tokens that track the bot's performance. Each token is an NFT (ERC1155 standard) that represents a user's position. Each position consists of 'bot tokens' (deposited capital divided by the bot's price when the NFT was minted) that can be sold to other users on the platform's marketplace. The funds used to mint the NFT vest linearly over the duration specified by the NFT's creator, and are distributed to 'bot token' holders proportional to the number of tokens they hold.
+
 ## Repository Structure
 
 ```
