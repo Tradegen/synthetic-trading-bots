@@ -24,6 +24,13 @@ Data feeds store the order history of each trading bot and use it to calculate t
 
 The synthetic asset protocol uses a bot's data feed to create tokens that track the bot's performance. Each token is an NFT (ERC1155 standard) that represents a user's position. Each position consists of 'bot tokens' (deposited capital divided by the bot's price when the NFT was minted) that can be sold to other users on the platform's marketplace. The funds used to mint the NFT vest linearly over the duration specified by the NFT's creator, and are distributed to 'bot token' holders proportional to the number of tokens they hold.
 
+### Why Simulated Trades?
+
+* Support leveraged positions without having to worry about liquidity in the system. Leverage can be implemented by multiplying price changes by a scalar.
+* Prevent the project from becoming dependent on a specific exchange for executing orders. This helps prevent 'contagion', where the collapse of one project causes other projects relying on that project to collapse as well. 
+* No price manipulation or front-running. Since orders are not being placed on an exchange, liquidity cannot be manipulated to affect execution price.
+* No slippage or exchange fees. Users can create strategies that trade with higher frequency without reducing profits.  
+
 ## Repository Structure
 
 ```
