@@ -24,6 +24,12 @@ Data feeds store the order history of each trading bot and use it to calculate t
 
 The synthetic asset protocol uses a bot's data feed to create tokens that track the bot's performance. Each token is an NFT (ERC1155 standard) that represents a user's position. Each position consists of 'bot tokens' (deposited capital divided by the bot's price when the NFT was minted) that can be sold to other users on the platform's marketplace. The funds used to mint the NFT vest linearly over the duration specified by the NFT's creator, and are distributed to 'bot token' holders proportional to the number of tokens they hold.
 
+### Smart Contracts
+
+* SyntheticBotToken - An ERC1155 NFT where each instance represents a user's investment in a trading bot. Each SyntheticBotToken contract is tied to a trading bot.
+* SyntheticBotTokenFactory - Creates SyntheticBotToken contracts. Only the protocol owner can interact with this contract.
+* Marketplace - Stores the logic for buying/selling synthetic bot tokens.
+
 ### Why Simulated Trades?
 
 * Support leveraged positions without having to worry about liquidity in the system. Leverage can be implemented by multiplying price changes by a scalar.
