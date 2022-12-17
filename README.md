@@ -36,6 +36,17 @@ The synthetic asset protocol uses a bot's data feed to create tokens that track 
 * Prevent the project from becoming dependent on a specific exchange for executing orders. This helps prevent 'contagion', where the collapse of one project causes other projects relying on that project to collapse as well. 
 * No price manipulation or front-running. Since orders are not being placed on an exchange, liquidity cannot be manipulated to affect execution price.
 * No slippage or exchange fees. Users can create strategies that trade with higher frequency without reducing profits.  
+* Let trading bot owners monetize their data. Profit potential becomes dependent on the quality of a strategy (reasonable set of entry/exit rules with consistent returns) instead of the amount of capital invested. Good strategies are more likely to have their data feed used by other projects, leading to risk-free revenue for their developers.
+
+### How does minting work?
+
+The SyntheticBotToken contract performs the following steps when a user mints tokens:
+
+1. Withdraw data feed usage fee from user.
+1. Send usage fee to the data feed contract to get the current trading bot price.
+1. Withdraw (price * numberOfTokens) stablecoin from user.
+1. Mint an NFT and transfer it to the user.
+1. Store stablecoin in the contract and vest to NFT holders.
 
 ## Repository Structure
 
