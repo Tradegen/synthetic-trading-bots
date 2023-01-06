@@ -1,4 +1,7 @@
 const { ethers } = require("hardhat");
+const hre = require('hardhat');
+require('hardhat-gas-report')(hre);
+
 const { parseEther } = require("@ethersproject/units");
 
 const TGEN_ADDRESS_TESTNET = "0xa9e37D0DC17C8B8Ed457Ab7cCC40b5785d4d11C0";
